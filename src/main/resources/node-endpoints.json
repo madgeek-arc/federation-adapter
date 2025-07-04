@@ -1,0 +1,6 @@
+{
+  "endpoints": [
+    "https://dev.providers.sandbox.eosc-beyond.eu/api/service/all",
+    "https://integration.providers.sandbox.eosc-beyond.eu/api/service/all"
+  ]
+}

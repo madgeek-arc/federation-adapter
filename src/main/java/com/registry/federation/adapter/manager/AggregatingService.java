@@ -120,7 +120,7 @@ public class AggregatingService {
     }
 
     private String buildUrlWithFacetFilter(String baseUrl, FacetFilter ff, int from, int quantity) {
-        UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(baseUrl)
+        UriComponentsBuilder builder = UriComponentsBuilder.fromUriString(baseUrl)
                 .queryParam("from", from)
                 .queryParam("quantity", quantity);
 
@@ -135,8 +135,7 @@ public class AggregatingService {
 
                 Object value = entry.getValue();
 
-                if (value instanceof Map) {
-                    Map<?, ?> innerMap = (Map<?, ?>) value;
+                if (value instanceof Map<?, ?> innerMap) {
                     Object orderVal = innerMap.get("order");
                     if (orderVal != null) {
                         order = orderVal.toString().toLowerCase();

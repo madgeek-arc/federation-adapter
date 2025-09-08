@@ -40,19 +40,4 @@ GET http://localhost:8080/api/federation/services
 http://localhost:8080/api/swagger-ui/index.html
 ```
 
-### Query Parameters
-The Federation Adapter supports the same query parameters as the Service Catalogue:
-
-| Parameter   | Type    | Default | Description                      |
-| ----------- | ------- | ------- | -------------------------------- |
-| `suspended` | boolean | false   | Filter by suspended services     |
-| `keyword`   | string  | —       | Keyword search                   |
-| `from`      | int     | 0       | Starting index in the result set |
-| `quantity`  | int     | 10      | Number of results to fetch       |
-| `sort`      | string  | asc     | Sorting order (`asc` / `desc`)   |
-| `order`     | string  | —       | Field to sort by                 |
-
-
-Apart from predefined parameters, you can filter services using most of the service-specific fields.
-For example, to fetch all services from a specific provider:
-http://localhost:8080/api/federation/services?resource_organisation={providerId}
+For more detailed documentation and examples, see [docs/examples.md](docs/examples.md).

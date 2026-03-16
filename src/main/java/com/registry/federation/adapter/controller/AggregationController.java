@@ -42,13 +42,13 @@ public class AggregationController {
         this.aggregatingService = aggregatingService;
     }
 
-    @Operation(summary = "Get all Services from a list of predefined nodes.")
+    @Operation(summary = "Get all Public Services from a list of predefined nodes.")
     @BrowseParameters
     @Parameter(name = "suspended", description = "Suspended",
             content = @Content(schema = @Schema(type = "boolean", defaultValue = "false")))
     @GetMapping(produces = {MediaType.APPLICATION_JSON_VALUE})
-    public ResponseEntity<Paging<Object>> getAllServices(@Parameter(hidden = true)
-                                                         @RequestParam MultiValueMap<String, Object> allRequestParams) {
+    public ResponseEntity<Paging<Object>> getAllPublicServices(@Parameter(hidden = true)
+                                                               @RequestParam MultiValueMap<String, Object> allRequestParams) {
         FacetFilter ff = FacetFilter.from(allRequestParams);
         Paging<Object> result = aggregatingService.getMergedPagedResults(ff);
 

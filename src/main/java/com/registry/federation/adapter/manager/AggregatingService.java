@@ -16,7 +16,7 @@
 
 package com.registry.federation.adapter.manager;
 
-import com.registry.federation.adapter.configuration.NodeProperties;
+import com.registry.federation.adapter.model.NodeProperties;
 import gr.uoa.di.madgik.registry.domain.Facet;
 import gr.uoa.di.madgik.registry.domain.FacetFilter;
 import gr.uoa.di.madgik.registry.domain.Paging;

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.registry.federation.adapter.configuration;
+package com.registry.federation.adapter.model;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;

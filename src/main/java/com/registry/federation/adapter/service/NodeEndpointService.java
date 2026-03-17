@@ -1,70 +1,75 @@
-/*
- * Copyright 2017-2025 OpenAIRE AMKE & Athena Research and Innovation Center
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      https://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
-
-package com.registry.federation.adapter.configuration;
+package com.registry.federation.adapter.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.registry.federation.adapter.model.NodeCapabilityResponse;
-import com.registry.federation.adapter.model.NodeProperties;
 import com.registry.federation.adapter.model.NodeRegistryEntry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
+import reactor.core.publisher.Mono;
 
 import java.io.IOException;
+import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
-@Configuration
-public class NodeEndpointsConfig {
+@Service
+public class NodeEndpointService {
 
-    private static final Logger logger = LoggerFactory.getLogger(NodeEndpointsConfig.class);
-
-    @Value("${node.endpoints.manual-config}")
-    private boolean manualConfig;
-    @Value("${node.endpoints.url}")
-    private String url;
-    @Value("${node.endpoints.x-api-key}")
-    private String apiKey;
+    private static final Logger logger = LoggerFactory.getLogger(NodeEndpointService.class);
 
     private final WebClient webClient;
+    private final ObjectMapper objectMapper;
+    private final String apiUrl;
+    private final String apiKey;
+    private final boolean manualConfig;
 
-    public NodeEndpointsConfig(WebClient webClient) {
+    private volatile List<String> cachedEndpoints = new ArrayList<>();
+
+    public NodeEndpointService(WebClient webClient,
+                               ObjectMapper objectMapper,
+                               @Value("${node.endpoints.manual-config}") boolean manualConfig,
+                               @Value("${node.endpoints.url}") String apiUrl,
+                               @Value("${node.endpoints.key}") String apiKey) {
+
         this.webClient = webClient;
-    }
-
-    @Bean
-    public NodeProperties nodeProperties(ObjectMapper objectMapper) throws IOException {
-        List<String> endpoints;
+        this.objectMapper = objectMapper;
+        this.manualConfig = manualConfig;
+        this.apiUrl = apiUrl;
+        this.apiKey = apiKey;
 
         if (manualConfig) {
-            endpoints = loadFromJson(objectMapper);
+            try {
+                cachedEndpoints = loadFromJson(objectMapper);
+            } catch (IOException e) {
+                throw new RuntimeException("Failed to load manual node-endpoints.json", e);
+            }
         } else {
-            endpoints = loadFromApi();
+            cachedEndpoints = loadFromApi();
         }
+    }
 
-        NodeProperties nodeProperties = new NodeProperties();
-        nodeProperties.setEndpoints(endpoints);
-        return nodeProperties;
+    public List<String> getCurrentEndpoints() {
+        return Collections.unmodifiableList(cachedEndpoints);
+    }
+
+    @Scheduled(fixedRateString = "PT1H")
+    public void refreshEndpoints() {
+        if (!manualConfig) {
+            try {
+                cachedEndpoints = loadFromApi();
+                logger.info("Node endpoints refreshed: {}", cachedEndpoints);
+            } catch (Exception e) {
+                logger.error("Failed to refresh endpoints: {}", e.getMessage());
+            }
+        }
     }
 
     private List<String> loadFromJson(ObjectMapper objectMapper) throws IOException {
@@ -84,7 +89,7 @@ public class NodeEndpointsConfig {
         try {
             // get all node endpoints registered on the federation
             List<NodeRegistryEntry> nodes = webClient.get()
-                    .uri(url)
+                    .uri(apiUrl)
                     .header("X-Api-Key", apiKey)
                     .retrieve()
                     .bodyToFlux(NodeRegistryEntry.class)
@@ -102,6 +107,8 @@ public class NodeEndpointsConfig {
                                 .uri(nodeEndpointUrl)
                                 .retrieve()
                                 .bodyToMono(NodeCapabilityResponse.class)
+                                .timeout(Duration.ofSeconds(5))
+                                .onErrorResume(e -> Mono.empty())
                                 .block();
                         // check for Resource Catalogue capability
                         if (response != null && response.getCapabilities() != null) {
@@ -119,7 +126,7 @@ public class NodeEndpointsConfig {
                                     });
                         }
                     } catch (Exception ex) {
-                        System.out.println("Skipping failing node: " + nodeEndpointUrl);
+                        logger.info("Skipping failing node: {}", nodeEndpointUrl);
                     }
                 }
             }

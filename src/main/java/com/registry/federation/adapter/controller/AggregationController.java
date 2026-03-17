@@ -16,7 +16,7 @@
 
 package com.registry.federation.adapter.controller;
 
-import com.registry.federation.adapter.manager.AggregatingService;
+import com.registry.federation.adapter.service.AggregatingService;
 import gr.uoa.di.madgik.registry.annotation.BrowseParameters;
 import gr.uoa.di.madgik.registry.domain.FacetFilter;
 import gr.uoa.di.madgik.registry.domain.Paging;

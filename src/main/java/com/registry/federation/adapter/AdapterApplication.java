@@ -18,12 +18,14 @@ package com.registry.federation.adapter;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 @SpringBootApplication
+@EnableScheduling
 public class AdapterApplication {
 
-	public static void main(String[] args) {
-		SpringApplication.run(AdapterApplication.class, args);
-	}
+    public static void main(String[] args) {
+        SpringApplication.run(AdapterApplication.class, args);
+    }
 
 }

@@ -14,18 +14,16 @@
  * limitations under the License.
  */
 
-package com.registry.federation.adapter.manager;
+package com.registry.federation.adapter.service;
 
-import com.registry.federation.adapter.model.NodeProperties;
 import gr.uoa.di.madgik.registry.domain.Facet;
 import gr.uoa.di.madgik.registry.domain.FacetFilter;
 import gr.uoa.di.madgik.registry.domain.Paging;
 import gr.uoa.di.madgik.registry.domain.Value;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
+import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.util.*;
@@ -34,18 +32,18 @@ import java.util.stream.Collectors;
 @Service
 public class AggregatingService {
 
+    private static final Logger logger = LoggerFactory.getLogger(AggregatingService.class);
+
+    private final WebClient webClient;
+    private final NodeEndpointService nodeEndpointService;
+
     @org.springframework.beans.factory.annotation.Value("${elastic.index.max_result_window:10000}")
     private int maxQuantity;
 
-    private final NodeProperties nodeProperties;
-
-    private static final Logger logger = LoggerFactory.getLogger(AggregatingService.class);
-
-    private final RestTemplate restTemplate;
-
-    public AggregatingService(NodeProperties nodeProperties) {
-        this.restTemplate = new RestTemplate();
-        this.nodeProperties = nodeProperties;
+    public AggregatingService(WebClient webClient,
+                              NodeEndpointService nodeEndpointService) {
+        this.webClient = webClient;
+        this.nodeEndpointService = nodeEndpointService;
     }
 
     public Paging<Object> getMergedPagedResults(FacetFilter ff) {
@@ -53,17 +51,21 @@ public class AggregatingService {
         int quantity = ff.getQuantity();
         int to = from + quantity;
 
-        List<String> endpoints = nodeProperties.getEndpoints();
+        List<String> endpoints = nodeEndpointService.getCurrentEndpoints();
         List<APIPageMetadata> apiMetadataList = new ArrayList<>();
         int totalAvailable = 0;
         List<Facet> allFacets = new ArrayList<>();
 
-        // fetch metadata
         for (String endpoint : endpoints) {
             try {
                 String metaUrl = buildUrlWithFacetFilter(endpoint, ff, 0, maxQuantity);
-                ResponseEntity<Paging> response = restTemplate.getForEntity(metaUrl, Paging.class);
-                Paging<Object> page = response.getBody();
+
+                Paging<Object> page = webClient.get()
+                        .uri(metaUrl)
+                        .retrieve()
+                        .bodyToMono(Paging.class)
+                        .block();
+
                 if (page == null) continue;
 
                 int size = page.getTotal();
@@ -95,8 +97,12 @@ public class AggregatingService {
             if (sliceCount > 0) {
                 try {
                     String dataUrl = buildUrlWithFacetFilter(meta.url, ff, sliceFrom, sliceCount);
-                    ResponseEntity<Paging> response = restTemplate.getForEntity(dataUrl, Paging.class);
-                    Paging<Object> page = response.getBody();
+
+                    Paging<Object> page = webClient.get()
+                            .uri(dataUrl)
+                            .retrieve()
+                            .bodyToMono(Paging.class)
+                            .block();
 
                     if (page != null && page.getResults() != null) {
                         finalResults.addAll(page.getResults());

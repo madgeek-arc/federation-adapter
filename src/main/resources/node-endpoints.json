@@ -1,6 +1,6 @@
 {
   "endpoints": [
-    "https://integration.providers.sandbox.eosc-beyond.eu/api/public/service/search",
-    "https://providers.sandbox.eosc-beyond.eu/api/public/service/search"
+    "https://dev.providers.sandbox.eosc-beyond.eu/api/public/service/search",
+    "https://integration.providers.sandbox.eosc-beyond.eu/api/public/service/search"
   ]
 }

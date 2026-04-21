@@ -36,21 +36,15 @@ public class NodeEndpointService {
     private static final Logger logger = LoggerFactory.getLogger(NodeEndpointService.class);
 
     private final ObjectMapper objectMapper;
-    private final String apiUrl;
-    private final String apiKey;
     private final boolean manualConfig;
     private final NodeResolver nodeResolver;
 
     public NodeEndpointService(ObjectMapper objectMapper,
                                @Value("${node.endpoints.manual-config}") boolean manualConfig,
-                               @Value("${node.endpoints.url}") String apiUrl,
-                               @Value("${node.endpoints.key}") String apiKey,
                                NodeResolver nodeResolver) {
 
         this.objectMapper = objectMapper;
         this.manualConfig = manualConfig;
-        this.apiUrl = apiUrl;
-        this.apiKey = apiKey;
         this.nodeResolver = nodeResolver;
     }
 

@@ -28,7 +28,7 @@
 	</scm>
 	<properties>
 		<java.version>21</java.version>
-		<registry-core.version>4.0.3</registry-core.version>
+		<registry-core.version>4.1.0</registry-core.version>
 	</properties>
 	<dependencies>
 		<dependency>

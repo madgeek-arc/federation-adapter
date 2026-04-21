@@ -1,23 +1,33 @@
+/*
+ * Copyright 2026 OpenAIRE AMKE & Athena Research and Innovation Center
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.registry.federation.adapter.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.registry.federation.adapter.model.NodeCapabilityResponse;
-import com.registry.federation.adapter.model.NodeRegistryEntry;
+import com.registry.federation.adapter.model.Node;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
-import org.springframework.web.reactive.function.client.WebClient;
-import reactor.core.publisher.Mono;
 
 import java.io.IOException;
-import java.time.Duration;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 @Service
@@ -25,52 +35,37 @@ public class NodeEndpointService {
 
     private static final Logger logger = LoggerFactory.getLogger(NodeEndpointService.class);
 
-    private final WebClient webClient;
     private final ObjectMapper objectMapper;
     private final String apiUrl;
     private final String apiKey;
     private final boolean manualConfig;
+    private final NodeResolver nodeResolver;
 
-    private volatile List<String> cachedEndpoints = new ArrayList<>();
-
-    public NodeEndpointService(WebClient webClient,
-                               ObjectMapper objectMapper,
+    public NodeEndpointService(ObjectMapper objectMapper,
                                @Value("${node.endpoints.manual-config}") boolean manualConfig,
                                @Value("${node.endpoints.url}") String apiUrl,
-                               @Value("${node.endpoints.key}") String apiKey) {
+                               @Value("${node.endpoints.key}") String apiKey,
+                               NodeResolver nodeResolver) {
 
-        this.webClient = webClient;
         this.objectMapper = objectMapper;
         this.manualConfig = manualConfig;
         this.apiUrl = apiUrl;
         this.apiKey = apiKey;
+        this.nodeResolver = nodeResolver;
+    }
 
+    public List<String> getResourceCatalogueEndpoints() {
         if (manualConfig) {
             try {
-                cachedEndpoints = loadFromJson(objectMapper);
+                return loadFromJson(objectMapper);
             } catch (IOException e) {
                 throw new RuntimeException("Failed to load manual node-endpoints.json", e);
             }
         } else {
-            cachedEndpoints = loadFromApi();
+            return loadFromApi();
         }
     }
 
-    public List<String> getCurrentEndpoints() {
-        return Collections.unmodifiableList(cachedEndpoints);
-    }
-
-    @Scheduled(fixedRateString = "PT1H")
-    public void refreshEndpoints() {
-        if (!manualConfig) {
-            try {
-                cachedEndpoints = loadFromApi();
-                logger.info("Node endpoints refreshed: {}", cachedEndpoints);
-            } catch (Exception e) {
-                logger.error("Failed to refresh endpoints: {}", e.getMessage());
-            }
-        }
-    }
 
     private List<String> loadFromJson(ObjectMapper objectMapper) throws IOException {
         Resource resource = new ClassPathResource("node-endpoints.json");
@@ -86,54 +81,27 @@ public class NodeEndpointService {
     }
 
     private List<String> loadFromApi() {
-        try {
-            // get all node endpoints registered on the federation
-            List<NodeRegistryEntry> nodes = webClient.get()
-                    .uri(apiUrl)
-                    .header("X-Api-Key", apiKey)
-                    .retrieve()
-                    .bodyToFlux(NodeRegistryEntry.class)
-                    .collectList()
-                    .block();
+        // get all node endpoints registered on the federation
+        List<Node> nodes = nodeResolver.fetchNodes();
 
-            List<String> finalEndpoints = new ArrayList<>();
-            if (nodes != null) {
-                for (NodeRegistryEntry node : nodes) {
-                    String nodeEndpointUrl = node.getNode_endpoint();
-                    if (nodeEndpointUrl == null || nodeEndpointUrl.isEmpty()) continue;
-                    try {
-                        // get endpoint's capabilities
-                        NodeCapabilityResponse response = webClient.get()
-                                .uri(nodeEndpointUrl)
-                                .retrieve()
-                                .bodyToMono(NodeCapabilityResponse.class)
-                                .timeout(Duration.ofSeconds(5))
-                                .onErrorResume(e -> Mono.empty())
-                                .block();
-                        // check for Resource Catalogue capability
-                        if (response != null && response.getCapabilities() != null) {
-                            response.getCapabilities().stream()
-                                    .filter(cap -> "Resource Catalogue".equalsIgnoreCase(cap.getCapability_type()))
-                                    .filter(cap -> isValid(cap.getEndpoint()) && isValid(cap.getVersion()))
-                                    .findFirst()
-                                    .ifPresent(cap -> {
-                                        // create proper API calls
-                                        String rcEndpoint = cap.getEndpoint();
-                                        String fullEndpoint = rcEndpoint.endsWith("/")
-                                                ? rcEndpoint + "public/service/search"
-                                                : rcEndpoint + "/public/service/search";
-                                        finalEndpoints.add(fullEndpoint);
-                                    });
-                        }
-                    } catch (Exception ex) {
-                        logger.info("Skipping failing node: {}", nodeEndpointUrl);
-                    }
+        List<String> finalEndpoints = new ArrayList<>();
+        if (nodes != null) {
+            for (Node node : nodes) {
+                if (node.capabilities() != null) {
+                    node.capabilities().stream()
+                            .filter(cap -> "Resource Catalogue".equalsIgnoreCase(cap.capabilityType()))
+                            .filter(cap -> isValid(cap.endpoint().toString()) && isValid(cap.version()))
+                            .findFirst()
+                            .ifPresent(cap -> {
+                                // create proper API calls
+                                String rcSearchEndpoint = String
+                                        .join("/", cap.endpoint().toString(), "public/service/search");
+                                finalEndpoints.add(rcSearchEndpoint);
+                            });
                 }
             }
-            return finalEndpoints;
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to fetch nodes from federation API", e);
         }
+        return finalEndpoints;
     }
 
     private boolean isValid(String value) {

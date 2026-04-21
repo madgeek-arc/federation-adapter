@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2025 OpenAIRE AMKE & Athena Research and Innovation Center
+ * Copyright 2026 OpenAIRE AMKE & Athena Research and Innovation Center
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,6 +16,7 @@
 
 package com.registry.federation.adapter.service;
 
+import com.registry.federation.adapter.Page;
 import gr.uoa.di.madgik.registry.domain.Facet;
 import gr.uoa.di.madgik.registry.domain.FacetFilter;
 import gr.uoa.di.madgik.registry.domain.Paging;
@@ -23,7 +24,7 @@ import gr.uoa.di.madgik.registry.domain.Value;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
-import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.client.RestClient;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.util.*;
@@ -34,24 +35,27 @@ public class AggregatingService {
 
     private static final Logger logger = LoggerFactory.getLogger(AggregatingService.class);
 
-    private final WebClient webClient;
+    private final RestClient restClient;
     private final NodeEndpointService nodeEndpointService;
+    private final NodeResolver nodeResolver;
 
     @org.springframework.beans.factory.annotation.Value("${elastic.index.max_result_window:10000}")
     private int maxQuantity;
 
-    public AggregatingService(WebClient webClient,
-                              NodeEndpointService nodeEndpointService) {
-        this.webClient = webClient;
+    public AggregatingService(RestClient restClient,
+                              NodeEndpointService nodeEndpointService,
+                              NodeResolver nodeResolver) {
+        this.restClient = restClient;
         this.nodeEndpointService = nodeEndpointService;
+        this.nodeResolver = nodeResolver;
     }
 
-    public Paging<Object> getMergedPagedResults(FacetFilter ff) {
+    public Page<Object> getMergedPagedResults(FacetFilter ff) {
         int from = ff.getFrom();
         int quantity = ff.getQuantity();
         int to = from + quantity;
 
-        List<String> endpoints = nodeEndpointService.getCurrentEndpoints();
+        List<String> endpoints = nodeEndpointService.getResourceCatalogueEndpoints();
         List<APIPageMetadata> apiMetadataList = new ArrayList<>();
         int totalAvailable = 0;
         List<Facet> allFacets = new ArrayList<>();
@@ -60,11 +64,10 @@ public class AggregatingService {
             try {
                 String metaUrl = buildUrlWithFacetFilter(endpoint, ff, 0, maxQuantity);
 
-                Paging<Object> page = webClient.get()
+                Paging<?> page = restClient.get()
                         .uri(metaUrl)
                         .retrieve()
-                        .bodyToMono(Paging.class)
-                        .block();
+                        .body(Paging.class);
 
                 if (page == null) continue;
 
@@ -98,11 +101,10 @@ public class AggregatingService {
                 try {
                     String dataUrl = buildUrlWithFacetFilter(meta.url, ff, sliceFrom, sliceCount);
 
-                    Paging<Object> page = webClient.get()
+                    Paging<?> page = restClient.get()
                             .uri(dataUrl)
                             .retrieve()
-                            .bodyToMono(Paging.class)
-                            .block();
+                            .body(Paging.class);
 
                     if (page != null && page.getResults() != null) {
                         finalResults.addAll(page.getResults());
@@ -122,7 +124,7 @@ public class AggregatingService {
         List<Facet> mergedFacets = mergeFacets(allFacets);
 
         // creating paging
-        return createPaging(from, finalResults.size(), totalAvailable, finalResults, mergedFacets);
+        return createPage(from, finalResults.size(), totalAvailable, finalResults, mergedFacets);
     }
 
     private String buildUrlWithFacetFilter(String baseUrl, FacetFilter ff, int from, int quantity) {
@@ -208,14 +210,10 @@ public class AggregatingService {
         return new ArrayList<>(mergedFacetMap.values());
     }
 
-    private Paging<Object> createPaging(int from, int resultsSize, int total, List<Object> results, List<Facet> facets) {
-        Paging<Object> paging = new Paging<>();
-        paging.setFrom(from);
-        paging.setTo(from + resultsSize);
-        paging.setTotal(total);
-        paging.setResults(results);
-        paging.setFacets(facets);
-        return paging;
+    private Page<Object> createPage(int from, int resultsSize, int total, List<Object> results, List<Facet> facets) {
+        Page<Object> page = new Page<>(total, from, from+resultsSize, results, facets);
+        page.setMetadata(Map.of("nodes", nodeResolver.fetchNodes()));
+        return page;
     }
 
     private static class APIPageMetadata {

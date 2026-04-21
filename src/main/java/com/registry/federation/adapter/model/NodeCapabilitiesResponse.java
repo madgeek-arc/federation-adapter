@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2025 OpenAIRE AMKE & Athena Research and Innovation Center
+ * Copyright 2026 OpenAIRE AMKE & Athena Research and Innovation Center
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,33 +16,18 @@
 
 package com.registry.federation.adapter.model;
 
-public class NodeRegistryEntry {
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.registry.federation.adapter.service.NodeResolver;
 
-    private String id;
-    private String name;
-    private String node_endpoint;
+import java.net.URI;
+import java.util.List;
 
-    public String getId() {
-        return id;
-    }
+public record NodeCapabilitiesResponse(
+        @JsonProperty("node_endpoint")
+        String nodeEndpoint,
+        List<Capability> capabilities
+) {
 
-    public void setId(String id) {
-        this.id = id;
-    }
 
-    public String getName() {
-        return name;
-    }
-
-    public void setName(String name) {
-        this.name = name;
-    }
-
-    public String getNode_endpoint() {
-        return node_endpoint;
-    }
-
-    public void setNode_endpoint(String node_endpoint) {
-        this.node_endpoint = node_endpoint;
-    }
 }
+

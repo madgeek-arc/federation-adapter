@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2025 OpenAIRE AMKE & Athena Research and Innovation Center
+ * Copyright 2026 OpenAIRE AMKE & Athena Research and Innovation Center
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,16 +18,13 @@ package com.registry.federation.adapter.configuration;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.client.RestClient;
 
 @Configuration
-public class WebClientConfig {
+public class Config {
 
     @Bean
-    public WebClient webClient(WebClient.Builder builder) {
-        return builder
-                .codecs(configurer -> configurer.defaultCodecs()
-                        .maxInMemorySize(16 * 1024 * 1024)) // 16 MB
-                .build();
+    public RestClient restClient(RestClient.Builder builder) {
+        return builder.build();
     }
 }

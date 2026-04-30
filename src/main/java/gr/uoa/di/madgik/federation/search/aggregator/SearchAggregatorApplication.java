@@ -22,10 +22,10 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 
 @SpringBootApplication
 @EnableScheduling
-public class AdapterApplication {
+public class SearchAggregatorApplication {
 
     public static void main(String[] args) {
-        SpringApplication.run(AdapterApplication.class, args);
+        SpringApplication.run(SearchAggregatorApplication.class, args);
     }
 
 }

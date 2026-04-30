@@ -24,7 +24,7 @@ import org.springframework.web.client.RestClient;
 public class Config {
 
     @Bean
-    public RestClient restClient(RestClient.Builder builder) {
-        return builder.build();
+    public RestClient restClient() {
+        return RestClient.builder().build();
     }
 }

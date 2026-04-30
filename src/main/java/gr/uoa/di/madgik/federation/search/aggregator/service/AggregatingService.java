@@ -23,6 +23,7 @@ import gr.uoa.di.madgik.registry.domain.Paging;
 import gr.uoa.di.madgik.registry.domain.Value;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.util.UriComponentsBuilder;
@@ -38,9 +39,6 @@ public class AggregatingService {
     private final RestClient restClient;
     private final NodeEndpointService nodeEndpointService;
     private final NodeResolver nodeResolver;
-
-    @org.springframework.beans.factory.annotation.Value("${elastic.index.max_result_window:10000}")
-    private int maxQuantity;
 
     public AggregatingService(RestClient restClient,
                               NodeEndpointService nodeEndpointService,
@@ -61,26 +59,15 @@ public class AggregatingService {
         List<Facet> allFacets = new ArrayList<>();
 
         for (String endpoint : endpoints) {
-            try {
-                String metaUrl = buildUrlWithFacetFilter(endpoint, ff, 0, maxQuantity);
-
-                Paging<?> page = restClient.get()
-                        .uri(metaUrl)
-                        .retrieve()
-                        .body(Paging.class);
-
-                if (page == null) continue;
-
-                int size = page.getTotal();
-                totalAvailable += size;
-
-                apiMetadataList.add(new APIPageMetadata(endpoint, size));
-                allFacets.addAll(Optional.ofNullable(page.getFacets()).orElse(Collections.emptyList()));
-
-            } catch (Exception e) {
-                logger.info("Metadata fetch failed for: {}", endpoint, e);
-            }
+            fetchPageMetadata(endpoint, ff).ifPresent(metadata -> {
+                apiMetadataList.add(metadata);
+                allFacets.addAll(metadata.facets);
+            });
         }
+
+        totalAvailable = apiMetadataList.stream()
+                .mapToInt(metadata -> metadata.size)
+                .sum();
 
         // fetch results
         List<Object> finalResults = new ArrayList<>();
@@ -98,20 +85,14 @@ public class AggregatingService {
             int sliceCount = sliceTo - sliceFrom;
 
             if (sliceCount > 0) {
-                try {
-                    String dataUrl = buildUrlWithFacetFilter(meta.url, ff, sliceFrom, sliceCount);
+                String dataUrl = buildUrlWithFacetFilter(meta.url, ff, sliceFrom, sliceCount);
+                Optional<Paging<?>> pageOptional = fetchResultsPage(dataUrl);
 
-                    Paging<?> page = restClient.get()
-                            .uri(dataUrl)
-                            .retrieve()
-                            .body(Paging.class);
-
-                    if (page != null && page.getResults() != null) {
+                if (pageOptional.isPresent()) {
+                    Paging<?> page = pageOptional.get();
+                    if (page.getResults() != null) {
                         finalResults.addAll(page.getResults());
                     }
-
-                } catch (Exception e) {
-                    logger.info("Failed to fetch data from: {}", meta.url, e);
                 }
             }
 
@@ -125,6 +106,46 @@ public class AggregatingService {
 
         // creating paging
         return createPage(from, finalResults.size(), totalAvailable, finalResults, mergedFacets);
+    }
+
+    private Optional<APIPageMetadata> fetchPageMetadata(String endpoint, FacetFilter ff) {
+        String url = buildUrlWithFacetFilter(endpoint, ff, 0, 0);
+
+        return fetchPage(url, FetchPhase.METADATA)
+                .map(page -> new APIPageMetadata(
+                        endpoint,
+                        page.getTotal(),
+                        Optional.ofNullable(page.getFacets()).orElse(Collections.emptyList())
+                ));
+    }
+
+    private Optional<Paging<?>> fetchResultsPage(String url) {
+        return fetchPage(url, FetchPhase.DATA);
+    }
+
+    private Optional<Paging<?>> fetchPage(String url, FetchPhase phase) {
+        try {
+            Paging<?> page = restClient.get()
+                    .uri(url)
+                    .accept(MediaType.APPLICATION_JSON)
+                    .retrieve()
+                    .body(Paging.class);
+
+            return Optional.ofNullable(page);
+        } catch (Exception e) {
+            logger.warn("Skipping unavailable node during {} fetch: {} ({})",
+                    phase.logLabel, url, describeException(e));
+            logger.debug("Unavailable node details for {}", url, e);
+            return Optional.empty();
+        }
+    }
+
+    private String describeException(Exception e) {
+        String message = e.getMessage();
+        if (message == null || message.isBlank()) {
+            return e.getClass().getSimpleName();
+        }
+        return e.getClass().getSimpleName() + ": " + message;
     }
 
     private String buildUrlWithFacetFilter(String baseUrl, FacetFilter ff, int from, int quantity) {
@@ -211,7 +232,7 @@ public class AggregatingService {
     }
 
     private Page<Object> createPage(int from, int resultsSize, int total, List<Object> results, List<Facet> facets) {
-        Page<Object> page = new Page<>(total, from, from+resultsSize, results, facets);
+        Page<Object> page = new Page<>(total, from, from + resultsSize, results, facets);
         page.setMetadata(Map.of("nodes", nodeResolver.fetchNodes()));
         return page;
     }
@@ -219,10 +240,23 @@ public class AggregatingService {
     private static class APIPageMetadata {
         String url;
         int size;
+        List<Facet> facets;
 
-        APIPageMetadata(String url, int size) {
+        APIPageMetadata(String url, int size, List<Facet> facets) {
             this.url = url;
             this.size = size;
+            this.facets = facets;
+        }
+    }
+
+    private enum FetchPhase {
+        METADATA("metadata"),
+        DATA("data");
+
+        private final String logLabel;
+
+        FetchPhase(String logLabel) {
+            this.logLabel = logLabel;
         }
     }
 }

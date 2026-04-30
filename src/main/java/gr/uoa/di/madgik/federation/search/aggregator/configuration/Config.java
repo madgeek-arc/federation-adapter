@@ -14,18 +14,17 @@
  * limitations under the License.
  */
 
-package com.registry.federation.adapter;
+package gr.uoa.di.madgik.federation.search.aggregator.configuration;
 
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.scheduling.annotation.EnableScheduling;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.web.client.RestClient;
 
-@SpringBootApplication
-@EnableScheduling
-public class AdapterApplication {
+@Configuration
+public class Config {
 
-    public static void main(String[] args) {
-        SpringApplication.run(AdapterApplication.class, args);
+    @Bean
+    public RestClient restClient(RestClient.Builder builder) {
+        return builder.build();
     }
-
 }

@@ -14,16 +14,18 @@
  * limitations under the License.
  */
 
-package com.registry.federation.adapter.model;
+package gr.uoa.di.madgik.federation.search.aggregator.model;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
-import java.net.URI;
+import java.util.List;
 
-public record Capability(
-        @JsonProperty("capability_type")
-        String capabilityType,
-        URI endpoint,
-        String version
+public record NodeCapabilitiesResponse(
+        @JsonProperty("node_endpoint")
+        String nodeEndpoint,
+        List<Capability> capabilities
 ) {
+
+
 }
+

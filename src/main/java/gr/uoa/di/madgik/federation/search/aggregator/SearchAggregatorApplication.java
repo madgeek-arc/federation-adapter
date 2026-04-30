@@ -14,23 +14,18 @@
  * limitations under the License.
  */
 
-package com.registry.federation.adapter.model;
+package gr.uoa.di.madgik.federation.search.aggregator;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
-import java.net.URI;
-import java.util.List;
+@SpringBootApplication
+@EnableScheduling
+public class AdapterApplication {
 
-public record Node(
-        String id,
-        String name,
-        URI logo,
-        String pid,
-        @JsonProperty("legal_entity")
-        LegalEntity legalEntity,
-        @JsonProperty("node_endpoint")
-        URI nodeEndpoint,
-        List<Capability> capabilities) {
+    public static void main(String[] args) {
+        SpringApplication.run(AdapterApplication.class, args);
+    }
 
-    public record LegalEntity(String name, @JsonProperty("ror_id") String rorId) {}
 }

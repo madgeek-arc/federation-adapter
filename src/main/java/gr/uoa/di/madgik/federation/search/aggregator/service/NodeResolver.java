@@ -14,12 +14,11 @@
  * limitations under the License.
  */
 
-package com.registry.federation.adapter.service;
+package gr.uoa.di.madgik.federation.search.aggregator.service;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
-import com.registry.federation.adapter.model.Node;
-import com.registry.federation.adapter.model.Capability;
-import com.registry.federation.adapter.model.NodeCapabilitiesResponse;
+import gr.uoa.di.madgik.federation.search.aggregator.model.Node;
+import gr.uoa.di.madgik.federation.search.aggregator.model.Capability;
+import gr.uoa.di.madgik.federation.search.aggregator.model.NodeCapabilitiesResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;

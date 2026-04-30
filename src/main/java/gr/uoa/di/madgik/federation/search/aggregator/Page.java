@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.registry.federation.adapter;
+package gr.uoa.di.madgik.federation.search.aggregator;
 
 import gr.uoa.di.madgik.registry.domain.Facet;
 import gr.uoa.di.madgik.registry.domain.Paging;

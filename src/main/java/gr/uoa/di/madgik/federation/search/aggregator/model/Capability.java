@@ -14,17 +14,16 @@
  * limitations under the License.
  */
 
-package com.registry.federation.adapter.configuration;
+package gr.uoa.di.madgik.federation.search.aggregator.model;
 
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.web.client.RestClient;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
-@Configuration
-public class Config {
+import java.net.URI;
 
-    @Bean
-    public RestClient restClient(RestClient.Builder builder) {
-        return builder.build();
-    }
+public record Capability(
+        @JsonProperty("capability_type")
+        String capabilityType,
+        URI endpoint,
+        String version
+) {
 }

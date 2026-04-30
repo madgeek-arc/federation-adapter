@@ -14,20 +14,23 @@
  * limitations under the License.
  */
 
-package com.registry.federation.adapter.model;
+package gr.uoa.di.madgik.federation.search.aggregator.model;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.registry.federation.adapter.service.NodeResolver;
 
 import java.net.URI;
 import java.util.List;
 
-public record NodeCapabilitiesResponse(
+public record Node(
+        String id,
+        String name,
+        URI logo,
+        String pid,
+        @JsonProperty("legal_entity")
+        LegalEntity legalEntity,
         @JsonProperty("node_endpoint")
-        String nodeEndpoint,
-        List<Capability> capabilities
-) {
+        URI nodeEndpoint,
+        List<Capability> capabilities) {
 
-
+    public record LegalEntity(String name, @JsonProperty("ror_id") String rorId) {}
 }
-

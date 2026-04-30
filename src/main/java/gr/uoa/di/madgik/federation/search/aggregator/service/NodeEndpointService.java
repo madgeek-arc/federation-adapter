@@ -14,11 +14,11 @@
  * limitations under the License.
  */
 
-package com.registry.federation.adapter.service;
+package gr.uoa.di.madgik.federation.search.aggregator.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.registry.federation.adapter.model.Node;
+import gr.uoa.di.madgik.federation.search.aggregator.model.Node;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;

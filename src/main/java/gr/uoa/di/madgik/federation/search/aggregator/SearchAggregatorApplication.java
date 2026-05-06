@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2025 OpenAIRE AMKE & Athena Research and Innovation Center
+ * Copyright 2026 OpenAIRE AMKE & Athena Research and Innovation Center
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,16 +14,18 @@
  * limitations under the License.
  */
 
-package com.registry.federation.adapter;
+package gr.uoa.di.madgik.federation.search.aggregator;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 @SpringBootApplication
-public class AdapterApplication {
+@EnableScheduling
+public class SearchAggregatorApplication {
 
-	public static void main(String[] args) {
-		SpringApplication.run(AdapterApplication.class, args);
-	}
+    public static void main(String[] args) {
+        SpringApplication.run(SearchAggregatorApplication.class, args);
+    }
 
 }

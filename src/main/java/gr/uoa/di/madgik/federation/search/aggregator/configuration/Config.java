@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2025 OpenAIRE AMKE & Athena Research and Innovation Center
+ * Copyright 2026 OpenAIRE AMKE & Athena Research and Innovation Center
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,23 +14,17 @@
  * limitations under the License.
  */
 
-package com.registry.federation.adapter.configuration;
+package gr.uoa.di.madgik.federation.search.aggregator.configuration;
 
-import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.stereotype.Component;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.web.client.RestClient;
 
-import java.util.List;
+@Configuration
+public class Config {
 
-@Component
-@ConfigurationProperties(prefix = "node")
-public class NodeProperties {
-    private List<String> endpoints;
-
-    public List<String> getEndpoints() {
-        return endpoints;
-    }
-
-    public void setEndpoints(List<String> endpoints) {
-        this.endpoints = endpoints;
+    @Bean
+    public RestClient restClient() {
+        return RestClient.builder().build();
     }
 }

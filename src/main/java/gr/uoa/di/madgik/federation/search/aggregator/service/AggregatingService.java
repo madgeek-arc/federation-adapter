@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-2025 OpenAIRE AMKE & Athena Research and Innovation Center
+ * Copyright 2026 OpenAIRE AMKE & Athena Research and Innovation Center
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,18 +14,18 @@
  * limitations under the License.
  */
 
-package com.registry.federation.adapter.manager;
+package gr.uoa.di.madgik.federation.search.aggregator.service;
 
-import com.registry.federation.adapter.configuration.NodeProperties;
+import gr.uoa.di.madgik.federation.search.aggregator.Page;
 import gr.uoa.di.madgik.registry.domain.Facet;
 import gr.uoa.di.madgik.registry.domain.FacetFilter;
 import gr.uoa.di.madgik.registry.domain.Paging;
 import gr.uoa.di.madgik.registry.domain.Value;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.http.ResponseEntity;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
+import org.springframework.web.client.RestClient;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.util.*;
@@ -34,48 +34,40 @@ import java.util.stream.Collectors;
 @Service
 public class AggregatingService {
 
-    @org.springframework.beans.factory.annotation.Value("${elastic.index.max_result_window:10000}")
-    private int maxQuantity;
-
-    private final NodeProperties nodeProperties;
-
     private static final Logger logger = LoggerFactory.getLogger(AggregatingService.class);
 
-    private final RestTemplate restTemplate;
+    private final RestClient restClient;
+    private final NodeEndpointService nodeEndpointService;
+    private final NodeResolver nodeResolver;
 
-    public AggregatingService(NodeProperties nodeProperties) {
-        this.restTemplate = new RestTemplate();
-        this.nodeProperties = nodeProperties;
+    public AggregatingService(RestClient restClient,
+                              NodeEndpointService nodeEndpointService,
+                              NodeResolver nodeResolver) {
+        this.restClient = restClient;
+        this.nodeEndpointService = nodeEndpointService;
+        this.nodeResolver = nodeResolver;
     }
 
-    public Paging<Object> getMergedPagedResults(FacetFilter ff) {
+    public Page<Object> getMergedPagedResults(FacetFilter ff) {
         int from = ff.getFrom();
         int quantity = ff.getQuantity();
         int to = from + quantity;
 
-        List<String> endpoints = nodeProperties.getEndpoints();
+        List<String> endpoints = nodeEndpointService.getResourceCatalogueEndpoints();
         List<APIPageMetadata> apiMetadataList = new ArrayList<>();
         int totalAvailable = 0;
         List<Facet> allFacets = new ArrayList<>();
 
-        // fetch metadata
         for (String endpoint : endpoints) {
-            try {
-                String metaUrl = buildUrlWithFacetFilter(endpoint, ff, 0, maxQuantity);
-                ResponseEntity<Paging> response = restTemplate.getForEntity(metaUrl, Paging.class);
-                Paging<Object> page = response.getBody();
-                if (page == null) continue;
-
-                int size = page.getTotal();
-                totalAvailable += size;
-
-                apiMetadataList.add(new APIPageMetadata(endpoint, size));
-                allFacets.addAll(Optional.ofNullable(page.getFacets()).orElse(Collections.emptyList()));
-
-            } catch (Exception e) {
-                logger.info("Metadata fetch failed for: {}", endpoint, e);
-            }
+            fetchPageMetadata(endpoint, ff).ifPresent(metadata -> {
+                apiMetadataList.add(metadata);
+                allFacets.addAll(metadata.facets);
+            });
         }
+
+        totalAvailable = apiMetadataList.stream()
+                .mapToInt(metadata -> metadata.size)
+                .sum();
 
         // fetch results
         List<Object> finalResults = new ArrayList<>();
@@ -93,17 +85,14 @@ public class AggregatingService {
             int sliceCount = sliceTo - sliceFrom;
 
             if (sliceCount > 0) {
-                try {
-                    String dataUrl = buildUrlWithFacetFilter(meta.url, ff, sliceFrom, sliceCount);
-                    ResponseEntity<Paging> response = restTemplate.getForEntity(dataUrl, Paging.class);
-                    Paging<Object> page = response.getBody();
+                String dataUrl = buildUrlWithFacetFilter(meta.url, ff, sliceFrom, sliceCount);
+                Optional<Paging<?>> pageOptional = fetchResultsPage(dataUrl);
 
-                    if (page != null && page.getResults() != null) {
+                if (pageOptional.isPresent()) {
+                    Paging<?> page = pageOptional.get();
+                    if (page.getResults() != null) {
                         finalResults.addAll(page.getResults());
                     }
-
-                } catch (Exception e) {
-                    logger.info("Failed to fetch data from: {}", meta.url, e);
                 }
             }
 
@@ -116,7 +105,47 @@ public class AggregatingService {
         List<Facet> mergedFacets = mergeFacets(allFacets);
 
         // creating paging
-        return createPaging(from, finalResults.size(), totalAvailable, finalResults, mergedFacets);
+        return createPage(from, finalResults.size(), totalAvailable, finalResults, mergedFacets);
+    }
+
+    private Optional<APIPageMetadata> fetchPageMetadata(String endpoint, FacetFilter ff) {
+        String url = buildUrlWithFacetFilter(endpoint, ff, 0, 0);
+
+        return fetchPage(url, FetchPhase.METADATA)
+                .map(page -> new APIPageMetadata(
+                        endpoint,
+                        page.getTotal(),
+                        Optional.ofNullable(page.getFacets()).orElse(Collections.emptyList())
+                ));
+    }
+
+    private Optional<Paging<?>> fetchResultsPage(String url) {
+        return fetchPage(url, FetchPhase.DATA);
+    }
+
+    private Optional<Paging<?>> fetchPage(String url, FetchPhase phase) {
+        try {
+            Paging<?> page = restClient.get()
+                    .uri(url)
+                    .accept(MediaType.APPLICATION_JSON)
+                    .retrieve()
+                    .body(Paging.class);
+
+            return Optional.ofNullable(page);
+        } catch (Exception e) {
+            logger.warn("Skipping unavailable node during {} fetch: {} ({})",
+                    phase.logLabel, url, describeException(e));
+            logger.debug("Unavailable node details for {}", url, e);
+            return Optional.empty();
+        }
+    }
+
+    private String describeException(Exception e) {
+        String message = e.getMessage();
+        if (message == null || message.isBlank()) {
+            return e.getClass().getSimpleName();
+        }
+        return e.getClass().getSimpleName() + ": " + message;
     }
 
     private String buildUrlWithFacetFilter(String baseUrl, FacetFilter ff, int from, int quantity) {
@@ -202,23 +231,32 @@ public class AggregatingService {
         return new ArrayList<>(mergedFacetMap.values());
     }
 
-    private Paging<Object> createPaging(int from, int resultsSize, int total, List<Object> results, List<Facet> facets) {
-        Paging<Object> paging = new Paging<>();
-        paging.setFrom(from);
-        paging.setTo(from + resultsSize);
-        paging.setTotal(total);
-        paging.setResults(results);
-        paging.setFacets(facets);
-        return paging;
+    private Page<Object> createPage(int from, int resultsSize, int total, List<Object> results, List<Facet> facets) {
+        Page<Object> page = new Page<>(total, from, from + resultsSize, results, facets);
+        page.setMetadata(Map.of("nodes", nodeResolver.fetchNodes()));
+        return page;
     }
 
     private static class APIPageMetadata {
         String url;
         int size;
+        List<Facet> facets;
 
-        APIPageMetadata(String url, int size) {
+        APIPageMetadata(String url, int size, List<Facet> facets) {
             this.url = url;
             this.size = size;
+            this.facets = facets;
+        }
+    }
+
+    private enum FetchPhase {
+        METADATA("metadata"),
+        DATA("data");
+
+        private final String logLabel;
+
+        FetchPhase(String logLabel) {
+            this.logLabel = logLabel;
         }
     }
 }

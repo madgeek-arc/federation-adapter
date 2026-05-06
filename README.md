@@ -1,6 +1,4 @@
-<div align="center">
-  <img src="https://eosc.eu/wp-content/uploads/2024/02/EOSC-Beyond-logo.png" alt="EOSC Beyond Logo">
-</div>
+[![EOSC Beyond Logo][eosc-logo]]()
 
 # Federation Adapter
 
@@ -23,7 +21,7 @@ mvn clean install
    include the node endpoints from which the service should aggregate data.
 2. Start the service:
    ```
-   java -jar target/adapter-X.X.X-SNAPSHOT.jar
+   java -jar target/search-aggregator-X.X.X-SNAPSHOT.jar
    ```
 
 ## API
@@ -41,3 +39,5 @@ http://localhost:8080/api/swagger-ui/index.html
 ```
 
 For more detailed documentation and examples, see [docs/examples.md](docs/examples.md).
+
+[eosc-logo]: https://eosc.eu/wp-content/uploads/2024/02/EOSC-Beyond-logo.png

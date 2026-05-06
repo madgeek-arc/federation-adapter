@@ -83,13 +83,13 @@ public class NodeEndpointService {
             for (Node node : nodes) {
                 if (node.capabilities() != null) {
                     node.capabilities().stream()
-                            .filter(cap -> "Resource Catalogue".equalsIgnoreCase(cap.capabilityType()))
-                            .filter(cap -> isValid(cap.endpoint().toString()) && isValid(cap.version()))
+                            .filter(cap -> "Resource Catalogue".equalsIgnoreCase(cap.getCapabilityType()))
+                            .filter(cap -> isValid(cap.getEndpoint()) && isValid(cap.getVersion()))
                             .findFirst()
                             .ifPresent(cap -> {
                                 // create proper API calls
                                 String rcSearchEndpoint = String
-                                        .join("/", cap.endpoint().toString(), "public/service/search");
+                                        .join("/", cap.getEndpoint(), "public/service/search");
                                 finalEndpoints.add(rcSearchEndpoint);
                             });
                 }

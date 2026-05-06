@@ -17,8 +17,10 @@
 package gr.uoa.di.madgik.federation.search.aggregator.service;
 
 import gr.uoa.di.madgik.federation.search.aggregator.model.Node;
-import gr.uoa.di.madgik.federation.search.aggregator.model.Capability;
-import gr.uoa.di.madgik.federation.search.aggregator.model.NodeCapabilitiesResponse;
+import gr.uoa.di.madgik.node.capabilities.model.Capability;
+import gr.uoa.di.madgik.node.capabilities.model.NodeCapabilities;
+import gr.uoa.di.madgik.node.endpoint.client.HttpNodeCapabilitiesClient;
+import gr.uoa.di.madgik.node.endpoint.client.NodeCapabilitiesClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -80,18 +82,14 @@ public class NodeResolver {
 
     private List<Capability> fetchCapabilities(URI nodeEndpoint) {
         try {
-            NodeCapabilitiesResponse response = webClient.mutate()
-                    .baseUrl(UriComponentsBuilder.fromUri(nodeEndpoint).build().toUriString())
-                    .build()
-                    .get()
-                    .retrieve()
-                    .body(NodeCapabilitiesResponse.class);
+            NodeCapabilitiesClient client = new HttpNodeCapabilitiesClient(nodeEndpoint);
+            NodeCapabilities response = client.get();
 
-            if (response == null || response.capabilities() == null) {
+            if (response == null || response.getCapabilities() == null) {
                 return List.of();
             }
 
-            return response.capabilities();
+            return response.getCapabilities();
         } catch (Exception e) {
             logger.warn("Failed to fetch capabilities from node endpoint {}", nodeEndpoint, e);
             return Collections.emptyList();

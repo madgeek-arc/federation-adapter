@@ -17,6 +17,7 @@
 package gr.uoa.di.madgik.federation.search.aggregator.model;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import gr.uoa.di.madgik.node.capabilities.model.Capability;
 
 import java.net.URI;
 import java.util.List;

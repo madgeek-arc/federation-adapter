@@ -83,26 +83,6 @@ pipeline {
       }
     }
 
-    stage('Remove Image') {
-      when {
-        expression {
-          return env.TAG_NAME != null || env.BRANCH_NAME == 'develop' || env.BRANCH_NAME == 'main'
-        }
-      }
-      steps {
-        script {
-          sh "docker rmi ${REGISTRY}/${IMAGE_NAME}:${DOCKER_TAG} || true"
-          if (env.TAG_NAME) {
-            def minorTag = DOCKER_TAG.tokenize('.').take(2).join('.')
-            sh "docker rmi ${REGISTRY}/${IMAGE_NAME}:${minorTag} || true"
-            sh "docker rmi ${REGISTRY}/${IMAGE_NAME}:latest || true"
-          } else if (env.BRANCH_NAME == 'develop') {
-            sh "docker rmi ${REGISTRY}/${IMAGE_NAME}:dev || true"
-          }
-        }
-      }
-    }
-
     stage('Handle Releases') {
       when {
         allOf {
@@ -112,15 +92,24 @@ pipeline {
       }
       steps {
         lock(resource: "release-${IMAGE_NAME}") {
-          withCredentials([string(credentialsId: 'jenkins-github-pat', variable: 'GH_TOKEN')]) {
-            sh '''
-              [ -f /etc/profile.d/load_nvm.sh ] || { echo "ERROR: /etc/profile.d/load_nvm.sh not found. NVM is required on this agent."; exit 1; }
-              . /etc/profile.d/load_nvm.sh
-              nvm install --lts
-              npx release-please@17 github-release --repo-url ${GIT_URL} --token ${GH_TOKEN}
+          retry(5) {
+            script {
+              try {
+                withCredentials([string(credentialsId: 'jenkins-github-pat', variable: 'GH_TOKEN')]) {
+                  sh '''
+                    [ -f /etc/profile.d/load_nvm.sh ] || { echo "ERROR: /etc/profile.d/load_nvm.sh not found. NVM is required on this agent."; exit 1; }
+                    . /etc/profile.d/load_nvm.sh
+                    nvm install --lts
+                    npx release-please@17 github-release --repo-url ${GIT_URL} --token ${GH_TOKEN}
 
-              npx release-please@17 release-pr --repo-url ${GIT_URL} --token ${GH_TOKEN}
-            '''
+                    npx release-please@17 release-pr --repo-url ${GIT_URL} --token ${GH_TOKEN}
+                  '''
+                }
+              } catch (e) {
+                sleep time: 45, unit: 'SECONDS'
+                throw e
+              }
+            }
           }
         }
       }
@@ -129,6 +118,11 @@ pipeline {
   }
 
   post {
+    always {
+      sh """
+        IMAGE_ID=\$(docker inspect --format='{{.Id}}' ${REGISTRY}/${IMAGE_NAME}:${DOCKER_TAG} 2>/dev/null) && docker rmi -f \$IMAGE_ID || true
+      """
+    }
     failure {
       emailext(
         subject: "FAILED: ${env.JOB_NAME} #${env.BUILD_NUMBER}",

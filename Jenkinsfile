@@ -62,8 +62,12 @@ pipeline {
               docker push ${primaryImage}
             """
             if (env.TAG_NAME) {
+              def minorTag = DOCKER_TAG.tokenize('.').take(2).join('.')
+              def minorImage = "${REGISTRY}/${IMAGE_NAME}:${minorTag}"
               def latestImage = "${REGISTRY}/${IMAGE_NAME}:latest"
               sh """
+                docker tag ${primaryImage} ${minorImage}
+                docker push ${minorImage}
                 docker tag ${primaryImage} ${latestImage}
                 docker push ${latestImage}
               """
@@ -89,6 +93,8 @@ pipeline {
         script {
           sh "docker rmi ${REGISTRY}/${IMAGE_NAME}:${DOCKER_TAG} || true"
           if (env.TAG_NAME) {
+            def minorTag = DOCKER_TAG.tokenize('.').take(2).join('.')
+            sh "docker rmi ${REGISTRY}/${IMAGE_NAME}:${minorTag} || true"
             sh "docker rmi ${REGISTRY}/${IMAGE_NAME}:latest || true"
           } else if (env.BRANCH_NAME == 'develop') {
             sh "docker rmi ${REGISTRY}/${IMAGE_NAME}:dev || true"

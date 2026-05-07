@@ -60,7 +60,7 @@ representative at an online or offline event.
 
 Instances of abusive, harassing, or otherwise unacceptable behavior may be
 reported by opening an issue on our
-[GitHub Issues page](https://github.com/madgeek-arc/federation-adapter/issues).
+[GitHub Issues page](https://github.com/madgeek-arc/federation-search/issues).
 All complaints will be reviewed and investigated promptly and fairly.
 
 All community leaders are obligated to respect the privacy and security of the

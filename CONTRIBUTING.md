@@ -1,4 +1,4 @@
-# Contributing to [Horizontal Adapters]
+# Contributing to [Federation Search]
 
 We welcome contributions from the community! Here's how you can help:
 

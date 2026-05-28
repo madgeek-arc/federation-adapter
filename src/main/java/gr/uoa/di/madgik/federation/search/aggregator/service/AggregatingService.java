@@ -17,8 +17,8 @@
 package gr.uoa.di.madgik.federation.search.aggregator.service;
 
 import gr.uoa.di.madgik.federation.search.aggregator.Page;
-import gr.uoa.di.madgik.federation.search.aggregator.model.Node;
 import gr.uoa.di.madgik.federation.search.aggregator.model.NodeFacetValue;
+import gr.uoa.di.madgik.node.registry.client.Node;
 import gr.uoa.di.madgik.registry.domain.Facet;
 import gr.uoa.di.madgik.registry.domain.FacetFilter;
 import gr.uoa.di.madgik.registry.domain.Paging;
@@ -240,7 +240,7 @@ public class AggregatingService {
 
     private void enrichNodeFacet(List<Facet> facets, List<Node> nodes) {
         Set<String> knownPids = nodes.stream()
-                .map(Node::pid)
+                .map(Node::getPid)
                 .filter(Objects::nonNull)
                 .collect(Collectors.toSet());
 

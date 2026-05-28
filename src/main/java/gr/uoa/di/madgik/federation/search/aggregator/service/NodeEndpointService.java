@@ -16,7 +16,7 @@
 
 package gr.uoa.di.madgik.federation.search.aggregator.service;
 
-import gr.uoa.di.madgik.federation.search.aggregator.model.Node;
+import gr.uoa.di.madgik.node.registry.client.Node;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -68,7 +68,7 @@ public class NodeEndpointService {
         List<String> endpoints = new ArrayList<>();
         if (jsonNode.has("endpoints")) {
             for (JsonNode endpointNode : jsonNode.get("endpoints")) {
-                endpoints.add(endpointNode.asText());
+                endpoints.add(endpointNode.asString());
             }
         }
         return endpoints;
@@ -81,15 +81,15 @@ public class NodeEndpointService {
         List<String> finalEndpoints = new ArrayList<>();
         if (nodes != null) {
             for (Node node : nodes) {
-                if (node.capabilities() != null) {
-                    node.capabilities().stream()
+                if (node.getCapabilities() != null) {
+                    node.getCapabilities().stream()
                             .filter(cap -> "Resource Catalogue".equalsIgnoreCase(cap.getCapabilityType()))
-                            .filter(cap -> isValid(cap.getEndpoint()) && isValid(cap.getVersion()))
+                            .filter(cap -> cap.getEndpoint() != null && isValid(cap.getVersion()))
                             .findFirst()
                             .ifPresent(cap -> {
                                 // create proper API calls
                                 String rcSearchEndpoint = String
-                                        .join("/", cap.getEndpoint(), "public/service/search");
+                                        .join("/", cap.getEndpoint().toString(), "public/service/search");
                                 finalEndpoints.add(rcSearchEndpoint);
                             });
                 }

@@ -17,6 +17,8 @@
 package gr.uoa.di.madgik.federation.search.aggregator.service;
 
 import gr.uoa.di.madgik.federation.search.aggregator.Page;
+import gr.uoa.di.madgik.federation.search.aggregator.model.NodeFacetValue;
+import gr.uoa.di.madgik.node.registry.client.Node;
 import gr.uoa.di.madgik.registry.domain.Facet;
 import gr.uoa.di.madgik.registry.domain.FacetFilter;
 import gr.uoa.di.madgik.registry.domain.Paging;
@@ -39,6 +41,8 @@ public class AggregatingService {
     private final RestClient restClient;
     private final NodeEndpointService nodeEndpointService;
     private final NodeResolver nodeResolver;
+
+    private static final String FALLBACK_PID = "21.T15999/EOSC-BEYOND";
 
     public AggregatingService(RestClient restClient,
                               NodeEndpointService nodeEndpointService,
@@ -104,8 +108,11 @@ public class AggregatingService {
         // merge facets
         List<Facet> mergedFacets = mergeFacets(allFacets);
 
-        // creating paging
-        return createPage(from, finalResults.size(), totalAvailable, finalResults, mergedFacets);
+        // enrich node facet with pid and create page
+        List<Node> nodes = nodeResolver.fetchNodes();
+        enrichNodeFacet(mergedFacets, nodes);
+
+        return createPage(from, finalResults.size(), totalAvailable, finalResults, mergedFacets, nodes);
     }
 
     private Optional<APIPageMetadata> fetchPageMetadata(String endpoint, FacetFilter ff) {
@@ -231,9 +238,26 @@ public class AggregatingService {
         return new ArrayList<>(mergedFacetMap.values());
     }
 
-    private Page<Object> createPage(int from, int resultsSize, int total, List<Object> results, List<Facet> facets) {
+    private void enrichNodeFacet(List<Facet> facets, List<Node> nodes) {
+        Set<String> knownPids = nodes.stream()
+                .map(Node::getPid)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+
+        facets.stream()
+                .filter(f -> "node".equals(f.getField()))
+                .findFirst()
+                .ifPresent(nodeFacet -> {
+                    List<Value> enriched = nodeFacet.getValues().stream()
+                            .map(v -> new NodeFacetValue(v, knownPids.contains(v.getValue()) ? v.getValue() : FALLBACK_PID))
+                            .collect(Collectors.toList());
+                    nodeFacet.setValues(enriched);
+                });
+    }
+
+    private Page<Object> createPage(int from, int resultsSize, int total, List<Object> results, List<Facet> facets, List<Node> nodes) {
         Page<Object> page = new Page<>(total, from, from + resultsSize, results, facets);
-        page.setMetadata(Map.of("nodes", nodeResolver.fetchNodes()));
+        page.setMetadata(Map.of("nodes", nodes));
         return page;
     }
 

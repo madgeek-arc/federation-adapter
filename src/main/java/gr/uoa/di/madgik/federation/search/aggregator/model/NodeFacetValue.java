@@ -17,21 +17,25 @@
 package gr.uoa.di.madgik.federation.search.aggregator.model;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import gr.uoa.di.madgik.node.capabilities.model.Capability;
+import gr.uoa.di.madgik.registry.domain.Value;
 
-import java.net.URI;
-import java.util.List;
+public class NodeFacetValue extends Value {
 
-public record Node(
-        String id,
-        String name,
-        URI logo,
-        String pid,
-        @JsonProperty("legal_entity")
-        LegalEntity legalEntity,
-        @JsonProperty("node_endpoint")
-        URI nodeEndpoint,
-        List<Capability> capabilities) {
+    @JsonProperty("pid")
+    private String pid;
 
-    public record LegalEntity(String name, @JsonProperty("ror_id") String rorId) {}
+    public NodeFacetValue(Value source, String pid) {
+        setValue(source.getValue());
+        setLabel(source.getLabel());
+        setCount(source.getCount());
+        this.pid = pid;
+    }
+
+    public String getPid() {
+        return pid;
+    }
+
+    public void setPid(String pid) {
+        this.pid = pid;
+    }
 }

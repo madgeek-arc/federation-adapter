@@ -49,11 +49,29 @@ The service uses the static list of endpoints defined in [node-endpoints.json](s
 The service appends the resource-type path automatically (e.g. `public/service/search`).
 
 ## Run
+
+### Option 1: Java
 1. Configure the service as described above.
 2. Start the service:
    ```
    java -jar target/search-aggregator-X.X.X-SNAPSHOT.jar
    ```
+
+### Option 2: Docker
+1. Copy the example env file and fill in your values:
+   ```
+   cp .env.example .env
+   ```
+2. Build the jar:
+   ```
+   mvn clean install -DskipTests
+   ```
+3. Build and start the container:
+   ```
+   docker compose up --build
+   ```
+
+The service will be available at `http://localhost:8090/api`.
 
 ## API
 The service exposes endpoints that query all configured nodes and aggregate the results.

@@ -1,0 +1,10 @@
+services:
+  federation-search:
+    image: docker.madgik.di.uoa.gr/federation-search:latest
+    build: .
+    ports:
+      - "8090:8090"
+    environment:
+      - node.endpoints.manual-config=${NODE_ENDPOINTS_MANUAL_CONFIG}
+      - node.registry.url=${NODE_REGISTRY_URL}
+      - node.registry.key=${NODE_REGISTRY_KEY}

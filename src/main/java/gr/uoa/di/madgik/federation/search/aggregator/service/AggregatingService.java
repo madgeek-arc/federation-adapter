@@ -57,7 +57,10 @@ public class AggregatingService {
         int quantity = ff.getQuantity();
         int to = from + quantity;
 
-        List<String> endpoints = nodeEndpointService.getResourceCatalogueEndpoints(resourceType);
+        List<String> endpoints = nodeEndpointService.getResourceCatalogueEndpoints().stream()
+                .map(base -> String.join("/", base, "public", resourceType, "search"))
+                .toList();
+
         List<APIPageMetadata> apiMetadataList = new ArrayList<>();
         int totalAvailable = 0;
         List<Facet> allFacets = new ArrayList<>();
@@ -155,8 +158,8 @@ public class AggregatingService {
         return e.getClass().getSimpleName() + ": " + message;
     }
 
-    private String buildUrlWithFacetFilter(String baseUrl, FacetFilter ff, int from, int quantity) {
-        UriComponentsBuilder builder = UriComponentsBuilder.fromUriString(baseUrl)
+    private String buildUrlWithFacetFilter(String url, FacetFilter ff, int from, int quantity) {
+        UriComponentsBuilder builder = UriComponentsBuilder.fromUriString(url)
                 .queryParam("from", from)
                 .queryParam("quantity", quantity);
 

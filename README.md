@@ -3,7 +3,7 @@
 # Federation Search
 
 ## Description
-The **Federation Search** is a Java-based service that aggregates Services from multiple 
+The **Federation Search** is a Java-based service that aggregates EOSC Resources from multiple 
 **[Resource Catalogue](https://github.com/madgeek-arc/resource-catalogue)** instances into a single API endpoint.
 
 ## Installation
@@ -41,10 +41,12 @@ The service uses the static list of endpoints defined in [node-endpoints.json](s
 ```json
 {
   "endpoints": [
-    "https://<node-host>/api/public/service/search"
+    "https://<node-host>/api"
   ]
 }
 ```
+
+The service appends the resource-type path automatically (e.g. `public/service/search`).
 
 ## Run
 1. Configure the service as described above.
@@ -54,11 +56,18 @@ The service uses the static list of endpoints defined in [node-endpoints.json](s
    ```
 
 ## API
-The service exposes a single API endpoint that queries all configured nodes and aggregates the results.
+The service exposes endpoints that query all configured nodes and aggregate the results.
 
-**Endpoint**:
+**Endpoints**:
 ```
+GET http://localhost:8080/api/federation/adapters
+GET http://localhost:8080/api/federation/catalogues
+GET http://localhost:8080/api/federation/datasources
+GET http://localhost:8080/api/federation/deployableApplications
+GET http://localhost:8080/api/federation/interoperabilityRecords
+GET http://localhost:8080/api/federation/organisations
 GET http://localhost:8080/api/federation/services
+GET http://localhost:8080/api/federation/trainingResources
 ```
 
 **SwaggerUI**:

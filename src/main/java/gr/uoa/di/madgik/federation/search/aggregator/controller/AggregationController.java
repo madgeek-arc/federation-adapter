@@ -33,7 +33,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("federation/services")
+@RequestMapping(path = "federation", produces = {MediaType.APPLICATION_JSON_VALUE})
 public class AggregationController {
 
     private final AggregatingService aggregatingService;
@@ -42,17 +42,123 @@ public class AggregationController {
         this.aggregatingService = aggregatingService;
     }
 
+    @Operation(summary = "Get all Public Adapters from a list of predefined nodes.")
+    @BrowseParameters
+    @Parameter(name = "suspended", description = "Suspended",
+            content = @Content(schema = @Schema(type = "boolean", defaultValue = "false")))
+    @GetMapping(path = "adapters")
+    public ResponseEntity<Paging<Object>> getAllPublicAdapters(@Parameter(hidden = true)
+                                                               @RequestParam MultiValueMap<String, Object> allRequestParams) {
+        FacetFilter ff = FacetFilter.from(allRequestParams);
+        Paging<Object> result = aggregatingService.getMergedPagedResults(ff, "adapter");
+        return ResponseEntity.ok(result);
+    }
+
+    @Operation(summary = "Get all Public Catalogues from a list of predefined nodes.")
+    @BrowseParameters
+    @Parameter(name = "suspended", description = "Suspended",
+            content = @Content(schema = @Schema(type = "boolean", defaultValue = "false")))
+    @GetMapping(path = "catalogues")
+    public ResponseEntity<Paging<Object>> getAllPublicCatalogues(@Parameter(hidden = true)
+                                                                 @RequestParam MultiValueMap<String, Object> allRequestParams) {
+        FacetFilter ff = FacetFilter.from(allRequestParams);
+        Paging<Object> result = aggregatingService.getMergedPagedResults(ff, "catalogue");
+        return ResponseEntity.ok(result);
+    }
+
+    @Operation(summary = "Get all Public Configuration Template Instances from a list of predefined nodes.")
+    @BrowseParameters
+    @Parameter(name = "suspended", description = "Suspended",
+            content = @Content(schema = @Schema(type = "boolean", defaultValue = "false")))
+    @GetMapping(path = "configurationTemplateInstances")
+    public ResponseEntity<Paging<Object>> getAllPublicCTI(@Parameter(hidden = true)
+                                                          @RequestParam MultiValueMap<String, Object> allRequestParams) {
+        FacetFilter ff = FacetFilter.from(allRequestParams);
+        Paging<Object> result = aggregatingService.getMergedPagedResults(ff, "configurationTemplateInstance");
+        return ResponseEntity.ok(result);
+    }
+
+    @Operation(summary = "Get all Public Datasources from a list of predefined nodes.")
+    @BrowseParameters
+    @Parameter(name = "suspended", description = "Suspended",
+            content = @Content(schema = @Schema(type = "boolean", defaultValue = "false")))
+    @GetMapping(path = "datasources")
+    public ResponseEntity<Paging<Object>> getAllPublicDatasources(@Parameter(hidden = true)
+                                                                  @RequestParam MultiValueMap<String, Object> allRequestParams) {
+        FacetFilter ff = FacetFilter.from(allRequestParams);
+        Paging<Object> result = aggregatingService.getMergedPagedResults(ff, "datasource");
+        return ResponseEntity.ok(result);
+    }
+
+    @Operation(summary = "Get all Public Deployable Applications from a list of predefined nodes.")
+    @BrowseParameters
+    @Parameter(name = "suspended", description = "Suspended",
+            content = @Content(schema = @Schema(type = "boolean", defaultValue = "false")))
+    @GetMapping(path = "deployableApplications")
+    public ResponseEntity<Paging<Object>> getAllPublicDeployableApplications(@Parameter(hidden = true)
+                                                                             @RequestParam MultiValueMap<String, Object> allRequestParams) {
+        FacetFilter ff = FacetFilter.from(allRequestParams);
+        Paging<Object> result = aggregatingService.getMergedPagedResults(ff, "deployableApplication");
+        return ResponseEntity.ok(result);
+    }
+
+    @Operation(summary = "Get all Public Interoperability Records from a list of predefined nodes.")
+    @BrowseParameters
+    @Parameter(name = "suspended", description = "Suspended",
+            content = @Content(schema = @Schema(type = "boolean", defaultValue = "false")))
+    @GetMapping(path = "interoperabilityRecords")
+    public ResponseEntity<Paging<Object>> getAllPublicInteroperabilityRecords(@Parameter(hidden = true)
+                                                                              @RequestParam MultiValueMap<String, Object> allRequestParams) {
+        FacetFilter ff = FacetFilter.from(allRequestParams);
+        Paging<Object> result = aggregatingService.getMergedPagedResults(ff, "interoperabilityRecord");
+        return ResponseEntity.ok(result);
+    }
+
+    @Operation(summary = "Get all Organisations from a list of predefined nodes.")
+    @BrowseParameters
+    @Parameter(name = "suspended", description = "Suspended",
+            content = @Content(schema = @Schema(type = "boolean", defaultValue = "false")))
+    @GetMapping(path = "organisations")
+    public ResponseEntity<Paging<Object>> getAllPublicOrganisations(@Parameter(hidden = true)
+                                                                    @RequestParam MultiValueMap<String, Object> allRequestParams) {
+        FacetFilter ff = FacetFilter.from(allRequestParams);
+        Paging<Object> result = aggregatingService.getMergedPagedResults(ff, "organisation");
+        return ResponseEntity.ok(result);
+    }
+
+    @Operation(summary = "Get all Resource Interoperability Records from a list of predefined nodes.")
+    @BrowseParameters
+    @Parameter(name = "suspended", description = "Suspended",
+            content = @Content(schema = @Schema(type = "boolean", defaultValue = "false")))
+    @GetMapping(path = "resourceInteroperabilityRecords")
+    public ResponseEntity<Paging<Object>> getAllPublicResourceInteroperabilityRecord(@Parameter(hidden = true)
+                                                                                     @RequestParam MultiValueMap<String, Object> allRequestParams) {
+        FacetFilter ff = FacetFilter.from(allRequestParams);
+        Paging<Object> result = aggregatingService.getMergedPagedResults(ff, "resourceInteroperabilityRecord");
+        return ResponseEntity.ok(result);
+    }
+
     @Operation(summary = "Get all Public Services from a list of predefined nodes.")
     @BrowseParameters
     @Parameter(name = "suspended", description = "Suspended",
             content = @Content(schema = @Schema(type = "boolean", defaultValue = "false")))
-    @GetMapping(produces = {MediaType.APPLICATION_JSON_VALUE})
+    @GetMapping(path = "services")
     public ResponseEntity<Paging<Object>> getAllPublicServices(@Parameter(hidden = true)
                                                                @RequestParam MultiValueMap<String, Object> allRequestParams) {
         FacetFilter ff = FacetFilter.from(allRequestParams);
-        Paging<Object> result = aggregatingService.getMergedPagedResults(ff);
-
+        Paging<Object> result = aggregatingService.getMergedPagedResults(ff, "service");
         return ResponseEntity.ok(result);
     }
 
+    @Operation(summary = "Get all Public Training Resources from a list of predefined nodes.")
+    @BrowseParameters
+    @Parameter(name = "suspended", description = "Suspended",
+            content = @Content(schema = @Schema(type = "boolean", defaultValue = "false")))
+    @GetMapping(path = "trainingResources")
+    public ResponseEntity<Paging<Object>> getAllPublicTrainingResources(@Parameter(hidden = true)
+                                                                        @RequestParam MultiValueMap<String, Object> allRequestParams) {
+        FacetFilter ff = FacetFilter.from(allRequestParams);
+        Paging<Object> result = aggregatingService.getMergedPagedResults(ff, "trainingResource");
+        return ResponseEntity.ok(result);
+    }
 }

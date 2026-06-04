@@ -75,7 +75,6 @@ public class NodeEndpointService {
     }
 
     private List<String> loadFromApi() {
-        // get all node endpoints registered on the federation
         List<Node> nodes = nodeResolver.fetchNodes();
 
         List<String> finalEndpoints = new ArrayList<>();
@@ -86,12 +85,7 @@ public class NodeEndpointService {
                             .filter(cap -> "Resource Catalogue".equalsIgnoreCase(cap.getCapabilityType()))
                             .filter(cap -> cap.getEndpoint() != null && isValid(cap.getVersion()))
                             .findFirst()
-                            .ifPresent(cap -> {
-                                // create proper API calls
-                                String rcSearchEndpoint = String
-                                        .join("/", cap.getEndpoint().toString(), "public/service/search");
-                                finalEndpoints.add(rcSearchEndpoint);
-                            });
+                            .ifPresent(cap -> finalEndpoints.add(cap.getEndpoint().toString()));
                 }
             }
         }

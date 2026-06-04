@@ -52,12 +52,12 @@ public class AggregatingService {
         this.nodeResolver = nodeResolver;
     }
 
-    public Page<Object> getMergedPagedResults(FacetFilter ff) {
+    public Page<Object> getMergedPagedResults(FacetFilter ff, String resourceType) {
         int from = ff.getFrom();
         int quantity = ff.getQuantity();
         int to = from + quantity;
 
-        List<String> endpoints = nodeEndpointService.getResourceCatalogueEndpoints();
+        List<String> endpoints = nodeEndpointService.getResourceCatalogueEndpoints(resourceType);
         List<APIPageMetadata> apiMetadataList = new ArrayList<>();
         int totalAvailable = 0;
         List<Facet> allFacets = new ArrayList<>();

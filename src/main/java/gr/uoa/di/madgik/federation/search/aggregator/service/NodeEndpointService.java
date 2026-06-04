@@ -48,34 +48,33 @@ public class NodeEndpointService {
         this.nodeResolver = nodeResolver;
     }
 
-    public List<String> getResourceCatalogueEndpoints() {
+    public List<String> getResourceCatalogueEndpoints(String resourceType) {
         if (manualConfig) {
             try {
-                return loadFromJson(objectMapper);
+                return loadFromJson(objectMapper, resourceType);
             } catch (IOException e) {
                 throw new RuntimeException("Failed to load manual node-endpoints.json", e);
             }
         } else {
-            return loadFromApi();
+            return loadFromApi(resourceType);
         }
     }
 
 
-    private List<String> loadFromJson(ObjectMapper objectMapper) throws IOException {
+    private List<String> loadFromJson(ObjectMapper objectMapper, String resourceType) throws IOException {
         Resource resource = new ClassPathResource("node-endpoints.json");
         JsonNode jsonNode = objectMapper.readTree(resource.getInputStream());
 
         List<String> endpoints = new ArrayList<>();
         if (jsonNode.has("endpoints")) {
             for (JsonNode endpointNode : jsonNode.get("endpoints")) {
-                endpoints.add(endpointNode.asString());
+                endpoints.add(String.join("/", endpointNode.asString(), "public", resourceType, "search"));
             }
         }
         return endpoints;
     }
 
-    private List<String> loadFromApi() {
-        // get all node endpoints registered on the federation
+    private List<String> loadFromApi(String resourceType) {
         List<Node> nodes = nodeResolver.fetchNodes();
 
         List<String> finalEndpoints = new ArrayList<>();
@@ -87,9 +86,8 @@ public class NodeEndpointService {
                             .filter(cap -> cap.getEndpoint() != null && isValid(cap.getVersion()))
                             .findFirst()
                             .ifPresent(cap -> {
-                                // create proper API calls
                                 String rcSearchEndpoint = String
-                                        .join("/", cap.getEndpoint().toString(), "public/service/search");
+                                        .join("/", cap.getEndpoint().toString(), "public", resourceType, "search");
                                 finalEndpoints.add(rcSearchEndpoint);
                             });
                 }

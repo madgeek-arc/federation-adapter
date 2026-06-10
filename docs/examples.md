@@ -1,34 +1,65 @@
+# Examples
+
 ### Response
 
 The API call returns a JSON response of the following form:
 ```json
 {
-  "total": 100,
+  "total": 22,
   "from": 0,
   "to": 10,
   "results": [
-    {},
-    {}
+    {
+      "score": 0.047619047619047616,
+      "originalScore": 14.3,
+      "result": {
+        "id": "eosc-beyond.my-service",
+        "name": "My Service",
+        "description": "...",
+        ...
+      },
+      "highlights": [
+        { "field": "name", "snippet": "My <em>Service</em>" },
+        { "field": "description", "snippet": "...provides a <em>service</em> for..." }
+      ]
+    }
   ],
   "facets": [
-    {},
-    {}
+    {
+      "field": "trl",
+      "label": "TRL",
+      "values": [
+        { "value": "trl-9", "label": "TRL-9", "count": 5 },
+        { "value": "trl-8", "label": "TRL-8", "count": 3 }
+      ]
+    },
+    {
+      "field": "node",
+      "label": "Node",
+      "values": [
+        { "value": "EOSC-Beyond", "label": "EOSC-Beyond", "pid": "21.T15999/...", "count": 8 }
+      ]
+    },
+    ...
   ],
   "metadata": {
     "nodes": [
-      {},
-      {}
+      {
+        "id": "4",
+        "name": "EOSC-Beyond"
+      },
+      ...
     ]
   }
 }
 ```
 
 where:
-- total: Number of total Services that matches the search criteria
+- total: Total number of resources matching the search criteria
 - from: Starting index in the result set
-- to: Number of Services fetched
-- results: List of Services
-- facets: List of Facets
+- to: Number of resources fetched
+- results: List of resources
+- facets: List of facets
 - metadata: Metadata information (e.g. nodes)
 
 ### Examples
@@ -43,12 +74,12 @@ Available query parameters:
 
 | Parameter   | Type    | Default | Description                      |
 | ----------- | ------- |---------|----------------------------------|
-| `suspended` | boolean | false   | Filter by suspended services     |
+| `suspended` | boolean | `false` | Filter by suspended resources    |
 | `keyword`   | string  | —       | Keyword search                   |
-| `from`      | int     | 0       | Starting index in the result set |
-| `quantity`  | int     | 10      | Number of results to fetch       |
-| `sort`      | string  | -       | Field to sort by                 |
-| `order`     | string  | asc     | Sorting order (`asc` / `desc`)   |
+| `from`      | int     | `0`     | Starting index in the result set |
+| `quantity`  | int     | `10`    | Number of results to fetch       |
+| `sort`      | string  | —       | Field to sort by                 |
+| `order`     | string  | `asc`   | Sorting order (`asc` / `desc`)   |
 
 
 #### GET with specific facet parameters (service specific fields)

@@ -16,6 +16,7 @@
 
 package gr.uoa.di.madgik.federation.search.aggregator.controller;
 
+import gr.uoa.di.madgik.federation.search.aggregator.dto.AggregatedResult;
 import gr.uoa.di.madgik.federation.search.aggregator.service.AggregatingService;
 import gr.uoa.di.madgik.registry.annotation.BrowseParameters;
 import gr.uoa.di.madgik.registry.domain.FacetFilter;
@@ -47,10 +48,10 @@ public class AggregationController {
     @Parameter(name = "suspended", description = "Suspended",
             content = @Content(schema = @Schema(type = "boolean", defaultValue = "false")))
     @GetMapping(path = "adapters")
-    public ResponseEntity<Paging<Object>> getAllPublicAdapters(@Parameter(hidden = true)
+    public ResponseEntity<Paging<AggregatedResult>> getAllPublicAdapters(@Parameter(hidden = true)
                                                                @RequestParam MultiValueMap<String, Object> allRequestParams) {
         FacetFilter ff = FacetFilter.from(allRequestParams);
-        Paging<Object> result = aggregatingService.getMergedPagedResults(ff, "adapter");
+        Paging<AggregatedResult> result = aggregatingService.getMergedPagedResults(ff, "adapter");
         return ResponseEntity.ok(result);
     }
 
@@ -59,10 +60,10 @@ public class AggregationController {
     @Parameter(name = "suspended", description = "Suspended",
             content = @Content(schema = @Schema(type = "boolean", defaultValue = "false")))
     @GetMapping(path = "catalogues")
-    public ResponseEntity<Paging<Object>> getAllPublicCatalogues(@Parameter(hidden = true)
+    public ResponseEntity<Paging<AggregatedResult>> getAllPublicCatalogues(@Parameter(hidden = true)
                                                                  @RequestParam MultiValueMap<String, Object> allRequestParams) {
         FacetFilter ff = FacetFilter.from(allRequestParams);
-        Paging<Object> result = aggregatingService.getMergedPagedResults(ff, "catalogue");
+        Paging<AggregatedResult> result = aggregatingService.getMergedPagedResults(ff, "catalogue");
         return ResponseEntity.ok(result);
     }
 
@@ -71,10 +72,10 @@ public class AggregationController {
     @Parameter(name = "suspended", description = "Suspended",
             content = @Content(schema = @Schema(type = "boolean", defaultValue = "false")))
     @GetMapping(path = "configurationTemplateInstances")
-    public ResponseEntity<Paging<Object>> getAllPublicCTI(@Parameter(hidden = true)
+    public ResponseEntity<Paging<AggregatedResult>> getAllPublicCTI(@Parameter(hidden = true)
                                                           @RequestParam MultiValueMap<String, Object> allRequestParams) {
         FacetFilter ff = FacetFilter.from(allRequestParams);
-        Paging<Object> result = aggregatingService.getMergedPagedResults(ff, "configurationTemplateInstance");
+        Paging<AggregatedResult> result = aggregatingService.getMergedPagedResults(ff, "configurationTemplateInstance");
         return ResponseEntity.ok(result);
     }
 
@@ -83,10 +84,10 @@ public class AggregationController {
     @Parameter(name = "suspended", description = "Suspended",
             content = @Content(schema = @Schema(type = "boolean", defaultValue = "false")))
     @GetMapping(path = "datasources")
-    public ResponseEntity<Paging<Object>> getAllPublicDatasources(@Parameter(hidden = true)
+    public ResponseEntity<Paging<AggregatedResult>> getAllPublicDatasources(@Parameter(hidden = true)
                                                                   @RequestParam MultiValueMap<String, Object> allRequestParams) {
         FacetFilter ff = FacetFilter.from(allRequestParams);
-        Paging<Object> result = aggregatingService.getMergedPagedResults(ff, "datasource");
+        Paging<AggregatedResult> result = aggregatingService.getMergedPagedResults(ff, "datasource");
         return ResponseEntity.ok(result);
     }
 
@@ -95,10 +96,10 @@ public class AggregationController {
     @Parameter(name = "suspended", description = "Suspended",
             content = @Content(schema = @Schema(type = "boolean", defaultValue = "false")))
     @GetMapping(path = "deployableApplications")
-    public ResponseEntity<Paging<Object>> getAllPublicDeployableApplications(@Parameter(hidden = true)
+    public ResponseEntity<Paging<AggregatedResult>> getAllPublicDeployableApplications(@Parameter(hidden = true)
                                                                              @RequestParam MultiValueMap<String, Object> allRequestParams) {
         FacetFilter ff = FacetFilter.from(allRequestParams);
-        Paging<Object> result = aggregatingService.getMergedPagedResults(ff, "deployableApplication");
+        Paging<AggregatedResult> result = aggregatingService.getMergedPagedResults(ff, "deployableApplication");
         return ResponseEntity.ok(result);
     }
 
@@ -107,10 +108,10 @@ public class AggregationController {
     @Parameter(name = "suspended", description = "Suspended",
             content = @Content(schema = @Schema(type = "boolean", defaultValue = "false")))
     @GetMapping(path = "interoperabilityRecords")
-    public ResponseEntity<Paging<Object>> getAllPublicInteroperabilityRecords(@Parameter(hidden = true)
+    public ResponseEntity<Paging<AggregatedResult>> getAllPublicInteroperabilityRecords(@Parameter(hidden = true)
                                                                               @RequestParam MultiValueMap<String, Object> allRequestParams) {
         FacetFilter ff = FacetFilter.from(allRequestParams);
-        Paging<Object> result = aggregatingService.getMergedPagedResults(ff, "interoperabilityRecord");
+        Paging<AggregatedResult> result = aggregatingService.getMergedPagedResults(ff, "interoperabilityRecord");
         return ResponseEntity.ok(result);
     }
 
@@ -119,10 +120,10 @@ public class AggregationController {
     @Parameter(name = "suspended", description = "Suspended",
             content = @Content(schema = @Schema(type = "boolean", defaultValue = "false")))
     @GetMapping(path = "organisations")
-    public ResponseEntity<Paging<Object>> getAllPublicOrganisations(@Parameter(hidden = true)
+    public ResponseEntity<Paging<AggregatedResult>> getAllPublicOrganisations(@Parameter(hidden = true)
                                                                     @RequestParam MultiValueMap<String, Object> allRequestParams) {
         FacetFilter ff = FacetFilter.from(allRequestParams);
-        Paging<Object> result = aggregatingService.getMergedPagedResults(ff, "organisation");
+        Paging<AggregatedResult> result = aggregatingService.getMergedPagedResults(ff, "organisation");
         return ResponseEntity.ok(result);
     }
 
@@ -131,10 +132,10 @@ public class AggregationController {
     @Parameter(name = "suspended", description = "Suspended",
             content = @Content(schema = @Schema(type = "boolean", defaultValue = "false")))
     @GetMapping(path = "resourceInteroperabilityRecords")
-    public ResponseEntity<Paging<Object>> getAllPublicResourceInteroperabilityRecord(@Parameter(hidden = true)
+    public ResponseEntity<Paging<AggregatedResult>> getAllPublicResourceInteroperabilityRecord(@Parameter(hidden = true)
                                                                                      @RequestParam MultiValueMap<String, Object> allRequestParams) {
         FacetFilter ff = FacetFilter.from(allRequestParams);
-        Paging<Object> result = aggregatingService.getMergedPagedResults(ff, "resourceInteroperabilityRecord");
+        Paging<AggregatedResult> result = aggregatingService.getMergedPagedResults(ff, "resourceInteroperabilityRecord");
         return ResponseEntity.ok(result);
     }
 
@@ -143,10 +144,10 @@ public class AggregationController {
     @Parameter(name = "suspended", description = "Suspended",
             content = @Content(schema = @Schema(type = "boolean", defaultValue = "false")))
     @GetMapping(path = "services")
-    public ResponseEntity<Paging<Object>> getAllPublicServices(@Parameter(hidden = true)
+    public ResponseEntity<Paging<AggregatedResult>> getAllPublicServices(@Parameter(hidden = true)
                                                                @RequestParam MultiValueMap<String, Object> allRequestParams) {
         FacetFilter ff = FacetFilter.from(allRequestParams);
-        Paging<Object> result = aggregatingService.getMergedPagedResults(ff, "service");
+        Paging<AggregatedResult> result = aggregatingService.getMergedPagedResults(ff, "service");
         return ResponseEntity.ok(result);
     }
 
@@ -155,10 +156,10 @@ public class AggregationController {
     @Parameter(name = "suspended", description = "Suspended",
             content = @Content(schema = @Schema(type = "boolean", defaultValue = "false")))
     @GetMapping(path = "trainingResources")
-    public ResponseEntity<Paging<Object>> getAllPublicTrainingResources(@Parameter(hidden = true)
+    public ResponseEntity<Paging<AggregatedResult>> getAllPublicTrainingResources(@Parameter(hidden = true)
                                                                         @RequestParam MultiValueMap<String, Object> allRequestParams) {
         FacetFilter ff = FacetFilter.from(allRequestParams);
-        Paging<Object> result = aggregatingService.getMergedPagedResults(ff, "trainingResource");
+        Paging<AggregatedResult> result = aggregatingService.getMergedPagedResults(ff, "trainingResource");
         return ResponseEntity.ok(result);
     }
 }

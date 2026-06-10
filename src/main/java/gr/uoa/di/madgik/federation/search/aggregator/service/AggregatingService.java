@@ -16,21 +16,21 @@
 
 package gr.uoa.di.madgik.federation.search.aggregator.service;
 
-import gr.uoa.di.madgik.federation.search.aggregator.Page;
-import gr.uoa.di.madgik.federation.search.aggregator.model.NodeFacetValue;
+import gr.uoa.di.madgik.federation.search.aggregator.dto.Page;
+import gr.uoa.di.madgik.federation.search.aggregator.dto.AggregatedResult;
+import gr.uoa.di.madgik.federation.search.aggregator.dto.NodeFacetValue;
 import gr.uoa.di.madgik.node.registry.client.Node;
-import gr.uoa.di.madgik.registry.domain.Facet;
-import gr.uoa.di.madgik.registry.domain.FacetFilter;
-import gr.uoa.di.madgik.registry.domain.Paging;
-import gr.uoa.di.madgik.registry.domain.Value;
+import gr.uoa.di.madgik.registry.domain.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 @Service
@@ -41,18 +41,21 @@ public class AggregatingService {
     private final RestClient restClient;
     private final NodeEndpointService nodeEndpointService;
     private final NodeResolver nodeResolver;
+    private final ScoringService scoringService;
 
     private static final String FALLBACK_PID = "21.T15999/EOSC-BEYOND";
 
     public AggregatingService(RestClient restClient,
                               NodeEndpointService nodeEndpointService,
-                              NodeResolver nodeResolver) {
+                              NodeResolver nodeResolver,
+                              ScoringService scoringService) {
         this.restClient = restClient;
         this.nodeEndpointService = nodeEndpointService;
         this.nodeResolver = nodeResolver;
+        this.scoringService = scoringService;
     }
 
-    public Page<Object> getMergedPagedResults(FacetFilter ff, String resourceType) {
+    public Page<AggregatedResult> getMergedPagedResults(FacetFilter ff, String resourceType) {
         int from = ff.getFrom();
         int quantity = ff.getQuantity();
         int to = from + quantity;
@@ -61,52 +64,43 @@ public class AggregatingService {
                 .map(base -> String.join("/", base, "public", resourceType, "search"))
                 .toList();
 
-        List<APIPageMetadata> apiMetadataList = new ArrayList<>();
-        int totalAvailable = 0;
-        List<Facet> allFacets = new ArrayList<>();
+        List<APIPageMetadata> apiMetadataList = Collections.synchronizedList(new ArrayList<>());
+        List<Facet> allFacets = Collections.synchronizedList(new ArrayList<>());
 
-        for (String endpoint : endpoints) {
+        endpoints.parallelStream().forEach(endpoint -> {
             fetchPageMetadata(endpoint, ff).ifPresent(metadata -> {
                 apiMetadataList.add(metadata);
-                allFacets.addAll(metadata.facets);
+                synchronized (allFacets) {
+                    allFacets.addAll(metadata.facets);
+                }
             });
-        }
+        });
 
-        totalAvailable = apiMetadataList.stream()
+        int totalAvailable = apiMetadataList.stream()
                 .mapToInt(metadata -> metadata.size)
                 .sum();
 
-        // fetch results
-        List<Object> finalResults = new ArrayList<>();
-        int globalIndex = 0;
-
-        for (APIPageMetadata meta : apiMetadataList) {
-
-            if (globalIndex + meta.size <= from) {
-                globalIndex += meta.size;
-                continue;
-            }
-
-            int sliceFrom = Math.max(0, from - globalIndex);
-            int sliceTo = Math.min(meta.size, to - globalIndex);
-            int sliceCount = sliceTo - sliceFrom;
-
-            if (sliceCount > 0) {
-                String dataUrl = buildUrlWithFacetFilter(meta.url, ff, sliceFrom, sliceCount);
-                Optional<Paging<?>> pageOptional = fetchResultsPage(dataUrl);
-
-                if (pageOptional.isPresent()) {
-                    Paging<?> page = pageOptional.get();
-                    if (page.getResults() != null) {
-                        finalResults.addAll(page.getResults());
+        // fetch results from all nodes
+        Map<String, List<HighlightedResult>> nodeResults = new ConcurrentHashMap<>();
+        apiMetadataList.parallelStream().forEach(meta -> {
+            if (meta.size > 0) {
+                String dataUrl = buildUrlWithFacetFilter(meta.url, ff, 0, to);
+                fetchResultsPage(dataUrl).ifPresent(page -> {
+                    List<HighlightedResult> results = page.getResults();
+                    if (results != null) {
+                        nodeResults.put(meta.url, results);
                     }
-                }
+                });
             }
+        });
 
-            globalIndex += meta.size;
+        // rank results using ScoringService
+        List<AggregatedResult> sortedResults = scoringService.applyRRF(nodeResults);
 
-            if (finalResults.size() >= quantity) break;
-        }
+        // Slice
+        int start = Math.min(from, sortedResults.size());
+        int end = Math.min(to, sortedResults.size());
+        List<AggregatedResult> finalResults = new ArrayList<>(sortedResults.subList(start, end));
 
         // merge facets
         List<Facet> mergedFacets = mergeFacets(allFacets);
@@ -129,17 +123,18 @@ public class AggregatingService {
                 ));
     }
 
-    private Optional<Paging<?>> fetchResultsPage(String url) {
+    private Optional<Paging<HighlightedResult>> fetchResultsPage(String url) {
         return fetchPage(url, FetchPhase.DATA);
     }
 
-    private Optional<Paging<?>> fetchPage(String url, FetchPhase phase) {
+    private Optional<Paging<HighlightedResult>> fetchPage(String url, FetchPhase phase) {
         try {
-            Paging<?> page = restClient.get()
+            Paging<HighlightedResult> page = restClient.get()
                     .uri(url)
                     .accept(MediaType.APPLICATION_JSON)
                     .retrieve()
-                    .body(Paging.class);
+                    .body(new ParameterizedTypeReference<>() {
+                    });
 
             return Optional.ofNullable(page);
         } catch (Exception e) {
@@ -258,8 +253,8 @@ public class AggregatingService {
                 });
     }
 
-    private Page<Object> createPage(int from, int resultsSize, int total, List<Object> results, List<Facet> facets, List<Node> nodes) {
-        Page<Object> page = new Page<>(total, from, from + resultsSize, results, facets);
+    private Page<AggregatedResult> createPage(int from, int resultsSize, int total, List<AggregatedResult> results, List<Facet> facets, List<Node> nodes) {
+        Page<AggregatedResult> page = new Page<>(total, from, from + resultsSize, results, facets);
         page.setMetadata(Map.of("nodes", nodes));
         return page;
     }

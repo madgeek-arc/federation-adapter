@@ -6,6 +6,8 @@
 The **Federation Search** is a Java-based service that aggregates EOSC Resources from multiple 
 **[Resource Catalogue](https://github.com/madgeek-arc/resource-catalogue)** instances into a single API endpoint.
 
+Results from different nodes are merged and ranked using the **Reciprocal Rank Fusion (RRF)** algorithm, ensuring a fair and robust ordering of results across the entire federation.
+
 ## Installation
 ```
 git clone https://github.com/madgeek-arc/federation-search.git
@@ -48,6 +50,17 @@ The service uses the static list of endpoints defined in [node-endpoints.json](s
 
 The service appends the resource-type path automatically (e.g. `public/service/search`).
 
+### Ranking Configuration (RRF)
+
+The ranking behavior can be tuned via the following property:
+
+```properties
+# Reciprocal Rank Fusion (RRF) smoothing constant.
+# Low values (10-20) favor top-ranked results; high values (60+) favor consensus.
+# Default is 20 (optimized for fetching 10 results per node).
+scoring.rrf.k=20
+```
+
 ## Run
 
 ### Option 1: Java
@@ -74,19 +87,28 @@ The service appends the resource-type path automatically (e.g. `public/service/s
 The service will be available at `http://localhost:8090/api`.
 
 ## API
-The service exposes endpoints that query all configured nodes and aggregate the results.
+The service exposes endpoints that query all configured nodes, merges the data, and applies RRF ranking.
 
 **Endpoints**:
 ```
 GET http://localhost:8080/api/federation/adapters
 GET http://localhost:8080/api/federation/catalogues
+GET http://localhost:8080/api/federation/configurationTemplateInstances
 GET http://localhost:8080/api/federation/datasources
 GET http://localhost:8080/api/federation/deployableApplications
 GET http://localhost:8080/api/federation/interoperabilityRecords
 GET http://localhost:8080/api/federation/organisations
+GET http://localhost:8080/api/federation/resourceInteroperabilityRecords
 GET http://localhost:8080/api/federation/services
 GET http://localhost:8080/api/federation/trainingResources
 ```
+
+### Response Structure
+Each result in the response contains ranking metadata:
+*   `score`: The definitive RRF score used for the final ranking.
+*   `originalScore`: The raw relevance score provided by the originating node (preserved for debugging and tie-breaking).
+*   `result`: The actual resource data.
+*   `highlights`: Snippets showing where keywords matched.
 
 **SwaggerUI**:
 ```

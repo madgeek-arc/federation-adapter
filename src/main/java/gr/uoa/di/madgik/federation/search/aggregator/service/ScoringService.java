@@ -40,24 +40,25 @@ public class ScoringService {
         this.rrfProperties = rrfProperties;
     }
 
-    public List<AggregatedResult> applyRRF(Map<String, List<HighlightedResult>> nodeResults) {
+    public List<AggregatedResult> applyRRF(Map<String, List<HighlightedResult<?>>> nodeResults) {
         Map<String, Double> rrfScores = new ConcurrentHashMap<>();
-        Map<String, HighlightedResult> resultsById = new ConcurrentHashMap<>();
+        Map<String, HighlightedResult<?>> resultsById = new ConcurrentHashMap<>();
 
         // sequential stream is preferred for small result sets to avoid context-switching overhead
-        nodeResults.values().stream().forEach(results -> {
-            if (results != null) {
-                for (int rank = 0; rank < results.size(); rank++) {
-                    HighlightedResult res = results.get(rank);
-                    if (res == null) continue;
-
-                    String id = extractId(res);
-                    double rankScore = 1.0 / (rrfProperties.getK() + (rank + 1));
-                    rrfScores.merge(id, rankScore, Double::sum);
-
-                    resultsById.merge(id, res, (oldRes, newRes) ->
-                            newRes.getScore() > oldRes.getScore() ? newRes : oldRes);
-                }
+        nodeResults.values().forEach(results -> { // iterates one node at a time
+            if (results == null) return;
+            // Sort by relevance score descending so RRF rank reflects relevance, not request order
+            List<HighlightedResult<?>> byRelevance = results.stream()
+                    .filter(Objects::nonNull)
+                    .sorted((r1, r2) -> Float.compare(r2.getScore(), r1.getScore()))
+                    .toList();
+            for (int rank = 0; rank < byRelevance.size(); rank++) { // ranks within that node only
+                HighlightedResult<?> res = byRelevance.get(rank);
+                String id = extractId(res);
+                double rankScore = 1.0 / (rrfProperties.getK() + (rank + 1));
+                rrfScores.merge(id, rankScore, Double::sum); // accumulates across nodes
+                resultsById.merge(id, res, (oldRes, newRes) ->
+                        newRes.getScore() > oldRes.getScore() ? newRes : oldRes);
             }
         });
 
@@ -94,7 +95,7 @@ public class ScoringService {
         Object result = null;
         if (doc instanceof AggregatedResult d) {
             result = d.result();
-        } else if (doc instanceof HighlightedResult hr) {
+        } else if (doc instanceof HighlightedResult<?> hr) {
             result = hr.getResult();
         } else if (doc instanceof Map) {
             result = doc;
@@ -125,7 +126,7 @@ public class ScoringService {
          * High values (60+) dampen the advantage of being #1 vs #5, favoring "consensus"
          * (results appearing in many lists). Standard default is 60.
          */
-        private int k = 60;
+        private int k = 20;
 
         public int getK() {
             return k;

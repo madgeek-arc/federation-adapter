@@ -80,13 +80,13 @@ public class AggregatingService {
                 .mapToInt(metadata -> metadata.size)
                 .sum();
 
-        // fetch results from all nodes
-        Map<String, List<HighlightedResult>> nodeResults = new ConcurrentHashMap<>();
+        // Fetches top results from every node to compute globally meaningful scores.
+        Map<String, List<HighlightedResult<?>>> nodeResults = new ConcurrentHashMap<>();
         apiMetadataList.parallelStream().forEach(meta -> {
             if (meta.size > 0) {
                 String dataUrl = buildUrlWithFacetFilter(meta.url, ff, 0, to);
                 fetchResultsPage(dataUrl).ifPresent(page -> {
-                    List<HighlightedResult> results = page.getResults();
+                    List<HighlightedResult<?>> results = page.getResults();
                     if (results != null) {
                         nodeResults.put(meta.url, results);
                     }
@@ -95,7 +95,12 @@ public class AggregatingService {
         });
 
         // rank results using ScoringService
-        List<AggregatedResult> sortedResults = scoringService.applyRRF(nodeResults);
+        List<AggregatedResult> scoredResults = scoringService.applyRRF(nodeResults);
+
+        // re-sort by user's requested order if specified; RRF scores are preserved
+        List<AggregatedResult> sortedResults = ff.getOrderBy() != null && !ff.getOrderBy().isEmpty()
+                ? applySortOrder(scoredResults, ff.getOrderBy(), resourceType)
+                : scoredResults;
 
         // Slice
         int start = Math.min(from, sortedResults.size());
@@ -123,13 +128,13 @@ public class AggregatingService {
                 ));
     }
 
-    private Optional<Paging<HighlightedResult>> fetchResultsPage(String url) {
+    private Optional<Paging<HighlightedResult<?>>> fetchResultsPage(String url) {
         return fetchPage(url, FetchPhase.DATA);
     }
 
-    private Optional<Paging<HighlightedResult>> fetchPage(String url, FetchPhase phase) {
+    private Optional<Paging<HighlightedResult<?>>> fetchPage(String url, FetchPhase phase) {
         try {
-            Paging<HighlightedResult> page = restClient.get()
+            Paging<HighlightedResult<?>> page = restClient.get()
                     .uri(url)
                     .accept(MediaType.APPLICATION_JSON)
                     .retrieve()
@@ -257,6 +262,59 @@ public class AggregatingService {
         Page<AggregatedResult> page = new Page<>(total, from, from + resultsSize, results, facets);
         page.setMetadata(Map.of("nodes", nodes));
         return page;
+    }
+
+    private List<AggregatedResult> applySortOrder(List<AggregatedResult> results, Map<String, Object> orderBy, String resourceType) {
+        Map.Entry<String, Object> entry = orderBy.entrySet().iterator().next();
+        String sortField = entry.getKey();
+        String order = "asc";
+        Object value = entry.getValue();
+        if (value instanceof Map<?, ?> innerMap) {
+            Object orderVal = innerMap.get("order");
+            if (orderVal != null) order = orderVal.toString().toLowerCase();
+        } else if (value instanceof String s) {
+            order = s.toLowerCase();
+        }
+
+        final boolean ascending = "asc".equals(order);
+        return results.stream()
+                .sorted((a, b) -> {
+                    Object valA = resolveFieldValue(a.result(), sortField, resourceType);
+                    Object valB = resolveFieldValue(b.result(), sortField, resourceType);
+                    if (valA == null && valB == null) return 0;
+                    if (valA == null) return ascending ? 1 : -1;
+                    if (valB == null) return ascending ? -1 : 1;
+                    int cmp;
+                    if (valA instanceof Number numA && valB instanceof Number numB) {
+                        cmp = Double.compare(numA.doubleValue(), numB.doubleValue());
+                    } else {
+                        cmp = valA.toString().compareToIgnoreCase(valB.toString());
+                    }
+                    return ascending ? cmp : -cmp;
+                })
+                .collect(Collectors.toList());
+    }
+
+    // Checks top-level first, then the nested resource-type object (e.g. result["service"]["name"])
+    private Object resolveFieldValue(Map<String, Object> result, String field, String resourceType) {
+        if (result == null) return null;
+        Object val = getFieldCaseInsensitive(result, field);
+        if (val != null) return val;
+        Object nested = getFieldCaseInsensitive(result, resourceType);
+        if (nested instanceof Map<?, ?> nestedMap) {
+            return getFieldCaseInsensitive((Map<String, Object>) nestedMap, field);
+        }
+        return null;
+    }
+
+    private Object getFieldCaseInsensitive(Map<String, Object> map, String field) {
+        if (map == null) return null;
+        Object val = map.get(field);
+        if (val != null) return val;
+        for (Map.Entry<String, Object> entry : map.entrySet()) {
+            if (entry.getKey().equalsIgnoreCase(field)) return entry.getValue();
+        }
+        return null;
     }
 
     private static class APIPageMetadata {

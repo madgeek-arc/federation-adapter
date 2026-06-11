@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package gr.uoa.di.madgik.federation.search.aggregator.model;
+package gr.uoa.di.madgik.federation.search.aggregator.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import gr.uoa.di.madgik.registry.domain.Value;

@@ -37,5 +37,7 @@ build/
 
 application.yaml
 .*
+!.env.example
+!.gitignore
 
 output.log

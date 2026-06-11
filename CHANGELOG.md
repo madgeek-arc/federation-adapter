@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.1.0](https://github.com/madgeek-arc/federation-adapter/compare/v1.0.0...v1.1.0) (2026-06-04)
+
+
+### Features
+
+* expand federated search functionality on all EOSC Resources ([8d4d550](https://github.com/madgeek-arc/federation-adapter/commit/8d4d55090203ccd460e0659098b54c5750ee5c0b))
+* expand federated search functionality on all EOSC Resources ([1d239d4](https://github.com/madgeek-arc/federation-adapter/commit/1d239d45a46dca72a8ef77e59f7773ff36b5102d))
+
 ## [1.0.0](https://github.com/madgeek-arc/federation-adapter/compare/v0.0.1...v1.0.0) (2026-05-07)
 
 

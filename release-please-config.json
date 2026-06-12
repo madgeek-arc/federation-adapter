@@ -5,13 +5,15 @@
     ".": {
       "changelog-path": "CHANGELOG.md",
       "release-type": "maven",
-      "extra-files": ["README.md"],
       "bump-minor-pre-major": false,
       "bump-patch-for-minor-pre-major": false,
       "draft": false,
-      "prerelease": false
+      "prerelease": false,
+      "extra-files": [
+        {"type": "generic", "path": "README.md"}
+      ]
     }
   },
-  "pull-request-header": "🤖 New release",
-  "pull-request-footer": " "
+  "pull-request-header": "🤖 Automated release PR",
+  "pull-request-footer": "Review the changelog and version updates, then merge this PR to publish the release."
 }

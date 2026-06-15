@@ -1,8 +1,11 @@
+def DOCKER_IMAGE_SHA = ''
+
 pipeline {
   agent any
 
   options {
     buildDiscarder(logRotator(numToKeepStr: '20'))
+    disableConcurrentBuilds(abortPrevious: true)
     timeout(time: 30, unit: 'MINUTES')
     timestamps()
   }
@@ -25,25 +28,61 @@ pipeline {
       }
     }
 
-    stage('Build & Test') {
-      steps {
-        sh './mvnw -B clean package'
-      }
-      post {
-        always {
-          junit allowEmptyResults: true, testResults: '**/target/surefire-reports/TEST-*.xml, **/target/failsafe-reports/TEST-*.xml'
-        }
-      }
-    }
+    stage('Test and Build Image') {
+      parallel {
 
-    stage('Build Image') {
-      when {
-        expression {
-          return env.TAG_NAME != null || env.BRANCH_NAME == 'develop' || env.BRANCH_NAME == 'main'
+        stage('Test') {
+          when { expression { return env.TAG_NAME == null } }
+          steps {
+            catchError(buildResult: 'UNSTABLE', stageResult: 'UNSTABLE') {
+              sh './mvnw -B verify'
+            }
+          }
+          post {
+            always {
+              junit allowEmptyResults: true, testResults: '**/target/surefire-reports/TEST-*.xml, **/target/failsafe-reports/TEST-*.xml'
+              recordCoverage(
+                tools: [[parser: 'JACOCO', pattern: '**/target/site/jacoco/jacoco.xml, **/target/site/jacoco-it/jacoco.xml']],
+                sourceDirectories: [[path: 'src/main/java']]
+              )
+            }
+          }
         }
-      }
-      steps {
-        sh "./mvnw spring-boot:build-image -DskipTests"
+
+        stage('Dependency Check') {
+          steps {
+            catchError(buildResult: 'UNSTABLE', stageResult: 'UNSTABLE') {
+              withCredentials([string(credentialsId: 'nvd-api-key', variable: 'NVD_API_KEY')]) {
+                sh './mvnw -B dependency-check:check -DnvdApiKey=$NVD_API_KEY'
+              }
+            }
+          }
+          post {
+            always {
+              archiveArtifacts allowEmptyArchive: true, artifacts: '**/dependency-check-report.*'
+              dependencyCheckPublisher(
+                pattern: '**/dependency-check-report.xml',
+                unstableTotalCritical: 1,
+                unstableTotalHigh: 3
+              )
+            }
+          }
+        }
+
+        stage('Build Image') {
+          when {
+            expression {
+              return env.TAG_NAME != null || env.BRANCH_NAME == 'develop' || env.BRANCH_NAME == 'main'
+            }
+          }
+          steps {
+            script {
+              sh "./mvnw spring-boot:build-image -DskipTests"
+              DOCKER_IMAGE_SHA = sh(script: "docker inspect --format='{{.Id}}' ${REGISTRY}/${IMAGE_NAME}:${DOCKER_TAG} 2>/dev/null || true", returnStdout: true).trim()
+            }
+          }
+        }
+
       }
     }
 
@@ -119,9 +158,11 @@ pipeline {
 
   post {
     always {
-      sh """
-        IMAGE_ID=\$(docker inspect --format='{{.Id}}' ${REGISTRY}/${IMAGE_NAME}:${DOCKER_TAG} 2>/dev/null) && docker rmi -f \$IMAGE_ID || true
-      """
+      script {
+        if (DOCKER_IMAGE_SHA) {
+          sh "docker rmi -f ${DOCKER_IMAGE_SHA} || true"
+        }
+      }
     }
     failure {
       emailext(

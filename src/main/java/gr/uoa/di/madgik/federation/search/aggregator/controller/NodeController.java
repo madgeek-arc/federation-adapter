@@ -13,11 +13,11 @@ import java.util.List;
 
 @RestController
 @RequestMapping(path = "nodes", produces = {MediaType.APPLICATION_JSON_VALUE})
-public class NodesController {
+public class NodeController {
 
     private final NodeResolver nodeResolver;
 
-    public NodesController(NodeResolver nodeResolver) {
+    public NodeController(NodeResolver nodeResolver) {
         this.nodeResolver = nodeResolver;
     }
 
@@ -29,6 +29,7 @@ public class NodesController {
                 .toList());
     }
 
+    @Operation(summary = "Get a Node by its PID from the Node Registry.")
     @GetMapping(path = "{prefix}/{suffix}", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<Node> get(@PathVariable(value = "prefix") String prefix,
                                     @PathVariable(value = "suffix") String suffix) {

@@ -20,8 +20,6 @@ import org.springframework.cache.CacheManager;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
-import java.util.concurrent.TimeUnit;
-
 @Component
 public class NodeCacheRefresher {
 
@@ -35,7 +33,7 @@ public class NodeCacheRefresher {
         this.cacheManager = cacheManager;
     }
 
-    @Scheduled(fixedRate = 5, timeUnit = TimeUnit.MINUTES)
+    @Scheduled(fixedRateString = "#{${node.cache.refresh-rate-minutes:5} * 60000}")
     public void refresh() {
         LOGGER.log(System.Logger.Level.INFO, "Refreshing nodes cache");
         var cache = cacheManager.getCache("nodes");

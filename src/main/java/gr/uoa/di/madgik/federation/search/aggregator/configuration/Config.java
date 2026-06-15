@@ -17,6 +17,7 @@
 package gr.uoa.di.madgik.federation.search.aggregator.configuration;
 
 import com.github.benmanes.caffeine.cache.Caffeine;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.caffeine.CaffeineCacheManager;
 import org.springframework.context.annotation.Bean;
@@ -31,6 +32,9 @@ import java.time.Duration;
 @Configuration
 @EnableScheduling
 public class Config {
+
+    @Value("${node.cache.ttl-minutes:10}")
+    private int cacheTtlMinutes;
 
     @Bean
     public WebMvcConfigurer corsConfigurer() {
@@ -50,7 +54,7 @@ public class Config {
     @Bean
     public CacheManager cacheManager() {
         CaffeineCacheManager cacheManager = new CaffeineCacheManager("nodes");
-        cacheManager.setCaffeine(Caffeine.newBuilder().expireAfterWrite(Duration.ofMinutes(10)));
+        cacheManager.setCaffeine(Caffeine.newBuilder().expireAfterWrite(Duration.ofMinutes(cacheTtlMinutes)));
         return cacheManager;
     }
 }

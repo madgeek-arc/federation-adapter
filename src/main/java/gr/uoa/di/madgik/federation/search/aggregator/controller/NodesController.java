@@ -2,12 +2,12 @@ package gr.uoa.di.madgik.federation.search.aggregator.controller;
 
 import gr.uoa.di.madgik.federation.search.aggregator.dto.NodeInfo;
 import gr.uoa.di.madgik.federation.search.aggregator.service.NodeResolver;
+import gr.uoa.di.madgik.node.registry.client.Node;
 import io.swagger.v3.oas.annotations.Operation;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -28,4 +28,11 @@ public class NodesController {
                 .map(n -> new NodeInfo(n.getPid(), n.getName(), n.getLogo(), n.getNodeEndpoint()))
                 .toList());
     }
+
+    @GetMapping(path = "{prefix}/{suffix}", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<Node> get(@PathVariable(value = "prefix") String prefix,
+                                    @PathVariable(value = "suffix") String suffix) {
+        return new ResponseEntity<>(nodeResolver.fetchNodes().stream().filter(node -> node.getPid().equals(prefix + "/" + suffix)).findAny().orElseThrow(), HttpStatus.OK);
+    }
+
 }

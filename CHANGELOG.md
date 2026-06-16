@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.2.0](https://github.com/madgeek-arc/federation-search/compare/v1.1.0...v1.2.0) (2026-06-16)
+
+
+### Features
+
+* add get by pid method ([45358fc](https://github.com/madgeek-arc/federation-search/commit/45358fcc4ef79062a47e5052aca5878186cac700))
+* create node controller ([eabd974](https://github.com/madgeek-arc/federation-search/commit/eabd9748b79dfbd3e6440c2b40b50e4432cbfdd3))
+* set up automated refresh mechanism for nodes ([f5a565d](https://github.com/madgeek-arc/federation-search/commit/f5a565dc199aefa46c0836eac48ce1fb5321108e))
+
+
+### Bug Fixes
+
+* allow cross-origin requests as api is public ([48b48a0](https://github.com/madgeek-arc/federation-search/commit/48b48a06fa26c340bf84983bc9c5398793b221b0))
+* **cves:** bump dependency versions to address several CVEs ([fa0f9eb](https://github.com/madgeek-arc/federation-search/commit/fa0f9ebf38d5c5f15ead3d58016d9ce3152a45a8))
+
 ## [1.1.0](https://github.com/madgeek-arc/federation-adapter/compare/v1.0.0...v1.1.0) (2026-06-04)
 
 

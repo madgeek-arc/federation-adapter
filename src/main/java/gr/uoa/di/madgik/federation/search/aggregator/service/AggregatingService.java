@@ -16,9 +16,8 @@
 
 package gr.uoa.di.madgik.federation.search.aggregator.service;
 
-import gr.uoa.di.madgik.federation.search.aggregator.dto.Page;
 import gr.uoa.di.madgik.federation.search.aggregator.dto.AggregatedResult;
-import gr.uoa.di.madgik.federation.search.aggregator.dto.NodeFacetValue;
+import gr.uoa.di.madgik.federation.search.aggregator.dto.Page;
 import gr.uoa.di.madgik.node.registry.client.Node;
 import gr.uoa.di.madgik.registry.domain.*;
 import org.slf4j.Logger;
@@ -42,8 +41,6 @@ public class AggregatingService {
     private final NodeEndpointService nodeEndpointService;
     private final NodeResolver nodeResolver;
     private final ScoringService scoringService;
-
-    private static final String FALLBACK_PID = "21.T15999/EOSC-BEYOND";
 
     public AggregatingService(RestClient restClient,
                               NodeEndpointService nodeEndpointService,
@@ -110,9 +107,7 @@ public class AggregatingService {
         // merge facets
         List<Facet> mergedFacets = mergeFacets(allFacets);
 
-        // enrich node facet with pid and create page
         List<Node> nodes = nodeResolver.fetchNodes();
-        enrichNodeFacet(mergedFacets, nodes);
 
         return createPage(from, finalResults.size(), totalAvailable, finalResults, mergedFacets, nodes);
     }
@@ -239,23 +234,6 @@ public class AggregatingService {
         }
 
         return new ArrayList<>(mergedFacetMap.values());
-    }
-
-    private void enrichNodeFacet(List<Facet> facets, List<Node> nodes) {
-        Set<String> knownPids = nodes.stream()
-                .map(Node::getPid)
-                .filter(Objects::nonNull)
-                .collect(Collectors.toSet());
-
-        facets.stream()
-                .filter(f -> "node".equals(f.getField()))
-                .findFirst()
-                .ifPresent(nodeFacet -> {
-                    List<Value> enriched = nodeFacet.getValues().stream()
-                            .map(v -> new NodeFacetValue(v, knownPids.contains(v.getValue()) ? v.getValue() : FALLBACK_PID))
-                            .collect(Collectors.toList());
-                    nodeFacet.setValues(enriched);
-                });
     }
 
     private Page<AggregatedResult> createPage(int from, int resultsSize, int total, List<AggregatedResult> results, List<Facet> facets, List<Node> nodes) {

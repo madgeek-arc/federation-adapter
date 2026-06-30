@@ -113,6 +113,29 @@ public class AggregatingService {
         return createPage(from, finalResults.size(), totalAvailable, finalResults, mergedFacets, nodes);
     }
 
+    public Optional<Map<String, Object>> getResourceById(String resourceType, String prefix, String suffix) {
+        return nodeEndpointService.getResourceCatalogueEndpoints().parallelStream()
+                .map(base -> String.join("/", base, "public", resourceType, prefix, suffix))
+                .map(url -> {
+                    try {
+                        Map<String, Object> result = restClient.get()
+                                .uri(url)
+                                .accept(MediaType.APPLICATION_JSON)
+                                .retrieve()
+                                .body(new ParameterizedTypeReference<>() {});
+                        if (result == null) return Optional.<Map<String, Object>>empty();
+                        return Optional.of(BundledResourceUnwrapper.unwrapSingleIfEnclosed(result, resourceType));
+                    } catch (Exception e) {
+                        logger.warn("Skipping unavailable node during id fetch: {} ({})", url, describeException(e));
+                        logger.debug("Unavailable node details for {}", url, e);
+                        return Optional.<Map<String, Object>>empty();
+                    }
+                })
+                .filter(Optional::isPresent)
+                .map(Optional::get)
+                .findFirst();
+    }
+
     private Optional<APIPageMetadata> fetchPageMetadata(String endpoint, FacetFilter ff) {
         String url = buildUrlWithFacetFilter(endpoint, ff, 0, 0);
 

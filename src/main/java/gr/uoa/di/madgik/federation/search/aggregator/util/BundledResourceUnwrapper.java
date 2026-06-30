@@ -55,6 +55,16 @@ public class BundledResourceUnwrapper {
     private BundledResourceUnwrapper() {
     }
 
+    @SuppressWarnings("unchecked")
+    public static Map<String, Object> unwrapSingleIfEnclosed(Map<String, Object> result, String resourceType) {
+        if (!ENCLOSED_RESOURCE_TYPES.contains(resourceType)) return result;
+        Object nested = result.get(resourceType);
+        if (nested instanceof Map<?, ?> map) {
+            return (Map<String, Object>) map;
+        }
+        return result;
+    }
+
     /**
      * Tests the first result from an API node to detect whether the resource payload is enclosed
      * under a property named after the resource type (e.g. {@code {"service": {...}}}).

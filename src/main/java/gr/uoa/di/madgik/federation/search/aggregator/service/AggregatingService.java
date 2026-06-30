@@ -18,6 +18,7 @@ package gr.uoa.di.madgik.federation.search.aggregator.service;
 
 import gr.uoa.di.madgik.federation.search.aggregator.dto.AggregatedResult;
 import gr.uoa.di.madgik.federation.search.aggregator.dto.Page;
+import gr.uoa.di.madgik.federation.search.aggregator.util.BundledResourceUnwrapper;
 import gr.uoa.di.madgik.node.registry.client.Node;
 import gr.uoa.di.madgik.registry.domain.*;
 import org.slf4j.Logger;
@@ -85,7 +86,7 @@ public class AggregatingService {
                 fetchResultsPage(dataUrl).ifPresent(page -> {
                     List<HighlightedResult<?>> results = page.getResults();
                     if (results != null) {
-                        nodeResults.put(meta.url, results);
+                        nodeResults.put(meta.url, BundledResourceUnwrapper.unwrapIfEnclosed(results, resourceType, meta.url));
                     }
                 });
             }

@@ -17,11 +17,13 @@
 package gr.uoa.di.madgik.federation.search.aggregator.controller;
 
 import gr.uoa.di.madgik.federation.search.aggregator.service.AggregatingService;
+import gr.uoa.di.madgik.registry.domain.ScoredResult;
 import io.swagger.v3.oas.annotations.Operation;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -59,5 +61,18 @@ public class FederationResourceController {
         return aggregatingService.getResourceById(resourceType, prefix, suffix)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
+    }
+
+    @Operation(summary = "Find resources across the federation similar to the given candidate resource.")
+    @PostMapping(path = "{collection}/similar", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<List<ScoredResult<Map<String, Object>>>> findSimilar(@PathVariable String collection,
+                                                           @RequestParam(required = false, defaultValue = "0.95") Float threshold,
+                                                           @RequestParam(defaultValue = "5") int quantity,
+                                                           @RequestBody Map<String, Object> resource) {
+        String resourceType = COLLECTION_TO_RESOURCE_TYPE.get(collection);
+        if (resourceType == null) {
+            return ResponseEntity.badRequest().build();
+        }
+        return ResponseEntity.ok(aggregatingService.findSimilarAcrossFederation(resourceType, resource, threshold, quantity));
     }
 }

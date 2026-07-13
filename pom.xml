@@ -27,7 +27,7 @@
 	</scm>
 	<properties>
 		<java.version>21</java.version>
-		<registry-core.version>4.1.0</registry-core.version>
+		<registry-core.version>5.0.0-SNAPSHOT</registry-core.version>
 		<spring-boot.build-image.imageName>docker.madgik.di.uoa.gr/federation-search-aggregator:${project.version}</spring-boot.build-image.imageName>
 		<dependency-check.version>12.2.2</dependency-check.version>
 	</properties>

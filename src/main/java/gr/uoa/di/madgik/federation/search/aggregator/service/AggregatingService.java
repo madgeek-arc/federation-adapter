@@ -136,6 +136,49 @@ public class AggregatingService {
                 .findFirst();
     }
 
+    /**
+     * Fans a candidate resource out, in parallel, to every node's embedding-based
+     * {@code POST /dedup/{resourceType}/check}. Unlike {@link #getMergedPagedResults}, the
+     * per-node scores here are already directly comparable (every node runs the same
+     * cosine-similarity recommendation logic), so results are merged by a plain sort on score
+     * rather than rank fusion.
+     */
+    public List<ScoredResult<Map<String, Object>>> findSimilarAcrossFederation(String resourceType, Map<String, Object> resource,
+                                                                                Float threshold, int quantity) {
+        List<String> endpoints = nodeEndpointService.getResourceCatalogueEndpoints().stream()
+                .map(base -> String.join("/", base, "dedup", resourceType, "check"))
+                .toList();
+
+        return endpoints.parallelStream()
+                .flatMap(endpoint -> fetchSimilar(endpoint, resource, threshold, quantity).stream())
+                .sorted((a, b) -> Float.compare(b.getScore(), a.getScore()))
+                .limit(quantity)
+                .toList();
+    }
+
+    private List<ScoredResult<Map<String, Object>>> fetchSimilar(String endpoint, Map<String, Object> resource,
+                                                                   Float threshold, int quantity) {
+        String url = UriComponentsBuilder.fromUriString(endpoint)
+                .queryParam("threshold", threshold)
+                .queryParam("quantity", quantity)
+                .toUriString();
+        try {
+            List<ScoredResult<Map<String, Object>>> results = restClient.post()
+                    .uri(url)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .accept(MediaType.APPLICATION_JSON)
+                    .body(resource)
+                    .retrieve()
+                    .body(new ParameterizedTypeReference<List<ScoredResult<Map<String, Object>>>>() {
+                    });
+            return results != null ? results : List.of();
+        } catch (Exception e) {
+            logger.warn("Skipping unavailable node during similarity fetch: {} ({})", url, describeException(e));
+            logger.debug("Unavailable node details for {}", url, e);
+            return List.of();
+        }
+    }
+
     private Optional<APIPageMetadata> fetchPageMetadata(String endpoint, FacetFilter ff) {
         String url = buildUrlWithFacetFilter(endpoint, ff, 0, 0);
 

@@ -138,15 +138,20 @@ public class AggregatingService {
 
     /**
      * Fans a candidate resource out, in parallel, to every node's embedding-based
-     * {@code POST /dedup/{resourceType}/check}. Unlike {@link #getMergedPagedResults}, the
+     * {@code POST /dedup/{resourceType}/check/local}. Unlike {@link #getMergedPagedResults}, the
      * per-node scores here are already directly comparable (every node runs the same
      * cosine-similarity recommendation logic), so results are merged by a plain sort on score
      * rather than rank fusion.
+     * <p>
+     * This deliberately targets each node's <em>local-only</em> {@code check/local} route rather
+     * than {@code check}: {@code check} itself calls back into this aggregator to get a
+     * federation-wide view, so fanning out to it here would call back into every node's
+     * {@code check}, which would call this aggregator again, recursing without bound.
      */
     public List<ScoredResult<Map<String, Object>>> findSimilarAcrossFederation(String resourceType, Map<String, Object> resource,
                                                                                 Float threshold, int quantity) {
         List<String> endpoints = nodeEndpointService.getResourceCatalogueEndpoints().stream()
-                .map(base -> String.join("/", base, "dedup", resourceType, "check"))
+                .map(base -> String.join("/", base, "dedup", resourceType, "check", "local"))
                 .toList();
 
         return endpoints.parallelStream()

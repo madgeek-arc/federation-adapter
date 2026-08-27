@@ -82,6 +82,45 @@ public class FederationResourceController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
+    @Operation(summary = "Get a single Configuration Template by id from whichever node owns it.")
+    @GetMapping(path = "configurationTemplates/{prefix}/{suffix}")
+    public ResponseEntity<Map<String, Object>> getConfigurationTemplate(@PathVariable String prefix,
+                                                                        @PathVariable String suffix) {
+        return aggregatingService.getConfigurationTemplateById(prefix, suffix)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    @Operation(summary = "Get all Configuration Templates of an Interoperability Record from whichever node owns it.")
+    @GetMapping(path = "configurationTemplates/getAllByInteroperabilityRecordId/{prefix}/{suffix}")
+    public ResponseEntity<Map<String, Object>> getConfigurationTemplatesByInteroperabilityRecordId(
+            @PathVariable String prefix, @PathVariable String suffix) {
+        return aggregatingService.getConfigurationTemplatesByInteroperabilityRecordId(prefix, suffix)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    @Operation(summary = "Get the Model bound to a Configuration Template from whichever node owns it.")
+    @GetMapping(path = "configurationTemplates/{prefix}/{suffix}/model")
+    public ResponseEntity<Map<String, Object>> getConfigurationTemplateModel(@PathVariable String prefix,
+                                                                             @PathVariable String suffix) {
+        return aggregatingService.getConfigurationTemplateModel(prefix, suffix)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    @Operation(summary = "Get the Configuration Template Instance form for a resource + template pair "
+            + "from whichever node owns them.")
+    @GetMapping(path = "configurationTemplateInstances/resources/{resPrefix}/{resSuffix}"
+            + "/templates/{ctPrefix}/{ctSuffix}")
+    public ResponseEntity<Map<String, Object>> getConfigurationTemplateInstanceTemplate(
+            @PathVariable String resPrefix, @PathVariable String resSuffix,
+            @PathVariable String ctPrefix, @PathVariable String ctSuffix) {
+        return aggregatingService.getConfigurationTemplateInstanceTemplate(resPrefix, resSuffix, ctPrefix, ctSuffix)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
+
     @Operation(summary = "Find resources across the federation similar to the given candidate resource.")
     @PostMapping(path = "{collection}/similar", consumes = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<List<ScoredResult<Map<String, Object>>>> findSimilar(@PathVariable String collection,

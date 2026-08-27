@@ -137,6 +137,79 @@ public class AggregatingService {
     }
 
     /**
+     * Fetches a single Configuration Template by id from whichever node owns it. Unlike
+     * {@link #getResourceById}, this targets the node's plain (unauthenticated) {@code
+     * configurationTemplate/{prefix}/{suffix}} route - resource-catalogue exposes no
+     * {@code public/configurationTemplate/*} API.
+     */
+    public Optional<Map<String, Object>> getConfigurationTemplateById(String prefix, String suffix) {
+        return firstNonNullFromNodes(base ->
+                String.join("/", base, "configurationTemplate", prefix, suffix));
+    }
+
+    /**
+     * Fetches the dynamic-form Model bound to a Configuration Template, from whichever node owns
+     * the template.
+     */
+    public Optional<Map<String, Object>> getConfigurationTemplateModel(String prefix, String suffix) {
+        return firstNonNullFromNodes(base ->
+                String.join("/", base, "configurationTemplate", prefix, suffix, "model"));
+    }
+
+    /**
+     * Fetches all Configuration Templates of an Interoperability Record, from whichever node owns
+     * it. Returns the raw {@code Paging} body of the first node whose {@code results} is non-empty.
+     */
+    public Optional<Map<String, Object>> getConfigurationTemplatesByInteroperabilityRecordId(String prefix, String suffix) {
+        return nodeEndpointService.getResourceCatalogueEndpoints().parallelStream()
+                .map(base -> String.join("/", base, "configurationTemplate",
+                        "getAllByInteroperabilityRecordId", prefix, suffix))
+                .map(url -> fetchMap(url, "configuration template list fetch"))
+                .filter(body -> body.isPresent() && hasNonEmptyResults(body.get()))
+                .map(Optional::get)
+                .findFirst();
+    }
+
+    /**
+     * Fetches the Configuration Template Instance form/template for a resource + template pair,
+     * from whichever node owns them.
+     */
+    public Optional<Map<String, Object>> getConfigurationTemplateInstanceTemplate(String resPrefix, String resSuffix,
+                                                                                 String ctPrefix, String ctSuffix) {
+        return firstNonNullFromNodes(base -> String.join("/", base, "configurationTemplateInstance",
+                "resources", resPrefix, resSuffix, "templates", ctPrefix, ctSuffix));
+    }
+
+    private Optional<Map<String, Object>> firstNonNullFromNodes(java.util.function.Function<String, String> urlForBase) {
+        return nodeEndpointService.getResourceCatalogueEndpoints().parallelStream()
+                .map(urlForBase)
+                .map(url -> fetchMap(url, "federated resource fetch"))
+                .filter(body -> body.isPresent() && !body.get().isEmpty())
+                .map(Optional::get)
+                .findFirst();
+    }
+
+    private Optional<Map<String, Object>> fetchMap(String url, String opLabel) {
+        try {
+            Map<String, Object> result = restClient.get()
+                    .uri(url)
+                    .accept(MediaType.APPLICATION_JSON)
+                    .retrieve()
+                    .body(new ParameterizedTypeReference<>() {});
+            return Optional.ofNullable(result);
+        } catch (Exception e) {
+            logger.warn("Skipping unavailable node during {}: {} ({})", opLabel, url, describeException(e));
+            logger.debug("Unavailable node details for {}", url, e);
+            return Optional.empty();
+        }
+    }
+
+    private boolean hasNonEmptyResults(Map<String, Object> pagingBody) {
+        Object results = pagingBody.get("results");
+        return results instanceof List<?> list && !list.isEmpty();
+    }
+
+    /**
      * Fans a candidate resource out, in parallel, to every node's embedding-based
      * {@code POST /dedup/{resourceType}/check/local}. Unlike {@link #getMergedPagedResults}, the
      * per-node scores here are already directly comparable (every node runs the same

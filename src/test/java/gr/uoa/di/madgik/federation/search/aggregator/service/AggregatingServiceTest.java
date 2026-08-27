@@ -158,4 +158,49 @@ class AggregatingServiceTest {
         assertThat(results.get(1).result().get("id")).isEqualTo("M");
         assertThat(results.get(2).result().get("id")).isEqualTo("Z");
     }
+
+    @Test
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    void getConfigurationTemplateModel_returnsFirstNodeThatHasIt() {
+        when(nodeEndpointService.getResourceCatalogueEndpoints()).thenReturn(List.of("node1", "node2"));
+
+        RestClient.RequestHeadersUriSpec getSpec = mock(RestClient.RequestHeadersUriSpec.class);
+        RestClient.RequestHeadersSpec headersSpec = mock(RestClient.RequestHeadersSpec.class);
+        RestClient.ResponseSpec responseSpec = mock(RestClient.ResponseSpec.class);
+        when(restClient.get()).thenReturn(getSpec);
+        when(getSpec.uri(anyString())).thenReturn(headersSpec);
+        when(headersSpec.accept(any())).thenReturn(headersSpec);
+        when(headersSpec.retrieve()).thenReturn(responseSpec);
+        when(responseSpec.body(any(ParameterizedTypeReference.class)))
+                .thenReturn(null)
+                .thenReturn(new HashMap<>(Map.of("id", "m-b-conftemp", "name", "CT model")));
+
+        Optional<Map<String, Object>> model = aggregatingService.getConfigurationTemplateModel("con", "abc123");
+
+        assertThat(model).isPresent();
+        assertThat(model.get().get("name")).isEqualTo("CT model");
+    }
+
+    @Test
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    void getConfigurationTemplatesByInteroperabilityRecordId_skipsNodesWithEmptyResults() {
+        when(nodeEndpointService.getResourceCatalogueEndpoints()).thenReturn(List.of("node1", "node2"));
+
+        RestClient.RequestHeadersUriSpec getSpec = mock(RestClient.RequestHeadersUriSpec.class);
+        RestClient.RequestHeadersSpec headersSpec = mock(RestClient.RequestHeadersSpec.class);
+        RestClient.ResponseSpec responseSpec = mock(RestClient.ResponseSpec.class);
+        when(restClient.get()).thenReturn(getSpec);
+        when(getSpec.uri(anyString())).thenReturn(headersSpec);
+        when(headersSpec.accept(any())).thenReturn(headersSpec);
+        when(headersSpec.retrieve()).thenReturn(responseSpec);
+        when(responseSpec.body(any(ParameterizedTypeReference.class)))
+                .thenReturn(new HashMap<>(Map.of("results", List.of())))
+                .thenReturn(new HashMap<>(Map.of("results", List.of(Map.of("id", "con/x")))));
+
+        Optional<Map<String, Object>> body =
+                aggregatingService.getConfigurationTemplatesByInteroperabilityRecordId("21.T15", "ir1");
+
+        assertThat(body).isPresent();
+        assertThat((List<?>) body.get().get("results")).hasSize(1);
+    }
 }

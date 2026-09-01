@@ -16,6 +16,7 @@
 
 package gr.uoa.di.madgik.federation.search.aggregator.controller;
 
+import gr.uoa.di.madgik.federation.search.aggregator.dto.ResourceIdName;
 import gr.uoa.di.madgik.federation.search.aggregator.service.AggregatingService;
 import gr.uoa.di.madgik.registry.domain.ScoredResult;
 import io.swagger.v3.oas.annotations.Operation;
@@ -66,6 +67,19 @@ public class FederationResourceController {
 
     public FederationResourceController(AggregatingService aggregatingService) {
         this.aggregatingService = aggregatingService;
+    }
+
+    @Operation(summary = "List every resource of the given collection across the federation as "
+            + "lightweight {id, name} pairs, for populating relational-field dropdowns. "
+            + "De-duplicated and name-sorted; cached; optional free-text 'query' filter.")
+    @GetMapping(path = "{collection}/ids")
+    public ResponseEntity<List<ResourceIdName>> listResourceIds(@PathVariable String collection,
+                                                               @RequestParam(required = false) String query) {
+        String resourceType = COLLECTION_TO_RESOURCE_TYPE.get(collection);
+        if (resourceType == null) {
+            return ResponseEntity.badRequest().build();
+        }
+        return ResponseEntity.ok(aggregatingService.listResourceIdsAndNames(resourceType, query));
     }
 
     @Operation(summary = "Get a single resource by ID.")

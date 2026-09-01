@@ -38,6 +38,9 @@ public class Config {
     @Value("${node.cache.ttl-minutes:10}")
     private int cacheTtlMinutes;
 
+    @Value("${federation.resource-ids.cache-ttl-minutes:5}")
+    private int resourceIdsCacheTtlMinutes;
+
     @Value("${node.request.connect-timeout-ms:2000}")
     private long connectTimeoutMs;
 
@@ -77,10 +80,20 @@ public class Config {
                 .build();
     }
 
+    /*
+     * "nodes" (the registry node list) and "federationResourceIds" (the per-resource-type
+     * {id,name} inventory behind relational-field dropdowns) change on different timescales and
+     * carry very different payloads, so each gets its own Caffeine spec via registerCustomCache
+     * rather than sharing the manager-wide one.
+     */
     @Bean
     public CacheManager cacheManager() {
-        CaffeineCacheManager cacheManager = new CaffeineCacheManager("nodes");
+        CaffeineCacheManager cacheManager = new CaffeineCacheManager();
         cacheManager.setCaffeine(Caffeine.newBuilder().expireAfterWrite(Duration.ofMinutes(cacheTtlMinutes)));
+        cacheManager.registerCustomCache("nodes",
+                Caffeine.newBuilder().expireAfterWrite(Duration.ofMinutes(cacheTtlMinutes)).build());
+        cacheManager.registerCustomCache("federationResourceIds",
+                Caffeine.newBuilder().expireAfterWrite(Duration.ofMinutes(resourceIdsCacheTtlMinutes)).build());
         return cacheManager;
     }
 }

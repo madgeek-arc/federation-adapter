@@ -18,11 +18,13 @@ package gr.uoa.di.madgik.federation.search.aggregator.service;
 
 import gr.uoa.di.madgik.federation.search.aggregator.dto.AggregatedResult;
 import gr.uoa.di.madgik.federation.search.aggregator.dto.Page;
+import gr.uoa.di.madgik.federation.search.aggregator.dto.ResourceIdName;
 import gr.uoa.di.madgik.federation.search.aggregator.util.BundledResourceUnwrapper;
 import gr.uoa.di.madgik.node.registry.client.Node;
 import gr.uoa.di.madgik.registry.domain.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
@@ -42,6 +44,15 @@ public class AggregatingService {
     private final NodeEndpointService nodeEndpointService;
     private final NodeResolver nodeResolver;
     private final ScoringService scoringService;
+
+    /**
+     * Upper bound on how many records the {@link #listResourceIdsAndNames} fan-out pulls from a
+     * single node. A relational-field dropdown needs the whole federation-wide inventory, so this
+     * is deliberately high; it exists only to stop a misbehaving node from streaming an unbounded
+     * response into the aggregator.
+     */
+    @org.springframework.beans.factory.annotation.Value("${federation.resource-ids.max-per-node:10000}")
+    private int resourceIdsMaxPerNode;
 
     public AggregatingService(RestClient restClient,
                               NodeEndpointService nodeEndpointService,
@@ -111,6 +122,74 @@ public class AggregatingService {
         List<Node> nodes = nodeResolver.fetchNodes();
 
         return createPage(from, finalResults.size(), totalAvailable, finalResults, mergedFacets, nodes);
+    }
+
+    /**
+     * Returns every resource of {@code resourceType} across the federation as a de-duplicated,
+     * name-sorted list of {@code {id, name}} pairs - the minimum a node needs to populate a
+     * relational-field dropdown that can reference resources living on other nodes.
+     * <p>
+     * Unlike {@link #getMergedPagedResults}, this does a single fan-out round (no metadata phase),
+     * projects each node's hits down to id + name <em>before</em> merging so full payloads are
+     * never held in aggregate, and skips Reciprocal Rank Fusion / facet merging entirely (a
+     * picker wants a stable alphabetical list, not a relevance ranking). The result is cached
+     * per {@code resourceType}/{@code query} so the fan-out runs once per TTL for the whole
+     * federation rather than once per dropdown open.
+     *
+     * @param query optional free-text filter passed through to each node's search as a keyword;
+     *              {@code null}/blank returns the full inventory.
+     */
+    @Cacheable(cacheNames = "federationResourceIds",
+            key = "#resourceType + '|' + (#query == null ? '' : #query.trim())")
+    public List<ResourceIdName> listResourceIdsAndNames(String resourceType, String query) {
+        FacetFilter ff = new FacetFilter();
+        ff.setFrom(0);
+        ff.setQuantity(resourceIdsMaxPerNode);
+        if (query != null && !query.isBlank()) {
+            ff.setKeyword(query.trim());
+        }
+
+        List<String> endpoints = nodeEndpointService.getResourceCatalogueEndpoints().stream()
+                .map(base -> String.join("/", base, "public", resourceType, "search"))
+                .toList();
+
+        List<ResourceIdName> all = endpoints.parallelStream()
+                .flatMap(endpoint -> fetchIdNames(
+                        buildUrlWithFacetFilter(endpoint, ff, 0, resourceIdsMaxPerNode), resourceType).stream())
+                .toList();
+
+        Map<String, ResourceIdName> byId = new LinkedHashMap<>();
+        for (ResourceIdName r : all) {
+            byId.putIfAbsent(r.id(), r);
+        }
+        return byId.values().stream()
+                .sorted(Comparator.comparing(r -> r.name() == null ? "" : r.name(), String.CASE_INSENSITIVE_ORDER))
+                .toList();
+    }
+
+    private List<ResourceIdName> fetchIdNames(String url, String resourceType) {
+        return fetchPage(url, FetchPhase.DATA)
+                .map(page -> {
+                    List<HighlightedResult<?>> results = page.getResults();
+                    if (results == null || results.isEmpty()) {
+                        return Collections.<ResourceIdName>emptyList();
+                    }
+                    List<HighlightedResult<?>> unwrapped =
+                            BundledResourceUnwrapper.unwrapIfEnclosed(results, resourceType, url);
+                    List<ResourceIdName> out = new ArrayList<>(unwrapped.size());
+                    for (HighlightedResult<?> r : unwrapped) {
+                        if (r.getResult() instanceof Map<?, ?> map) {
+                            Object id = map.get("id");
+                            if (id == null) {
+                                continue;
+                            }
+                            Object name = map.get("name");
+                            out.add(new ResourceIdName(id.toString(), name != null ? name.toString() : id.toString()));
+                        }
+                    }
+                    return out;
+                })
+                .orElseGet(Collections::emptyList);
     }
 
     public Optional<Map<String, Object>> getResourceById(String resourceType, String prefix, String suffix) {

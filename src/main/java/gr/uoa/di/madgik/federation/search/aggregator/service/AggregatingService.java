@@ -192,6 +192,14 @@ public class AggregatingService {
                 .orElseGet(Collections::emptyList);
     }
 
+    /**
+     * Resolves a single resource by id from whichever node owns it. Cached per
+     * {@code resourceType/prefix/suffix} (misses included, as negative results) so repeated
+     * lookups - notably the write-path existence checks a node runs when validating a
+     * cross-node reference - do not re-fan-out to every node on every call.
+     */
+    @Cacheable(cacheNames = "federationResourceById",
+            key = "#resourceType + '/' + #prefix + '/' + #suffix")
     public Optional<Map<String, Object>> getResourceById(String resourceType, String prefix, String suffix) {
         return nodeEndpointService.getResourceCatalogueEndpoints().parallelStream()
                 .map(base -> String.join("/", base, "public", resourceType, prefix, suffix))

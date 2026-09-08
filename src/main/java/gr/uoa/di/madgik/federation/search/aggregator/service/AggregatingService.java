@@ -224,47 +224,43 @@ public class AggregatingService {
     }
 
     /**
-     * Fetches a single Configuration Template by id from whichever node owns it. Unlike
-     * {@link #getResourceById}, this targets the node's plain (unauthenticated) {@code
-     * configurationTemplate/{prefix}/{suffix}} route - resource-catalogue exposes no
-     * {@code public/configurationTemplate/*} API.
+     * Fetches a single Configuration Template by id from whichever node owns it, from that node's
+     * public layer - a cross-node read only ever sees public layers, and the id that flows through
+     * the federation is the template's public (bare) PID.
      */
     public Optional<Map<String, Object>> getConfigurationTemplateById(String prefix, String suffix) {
         return firstNonNullFromNodes(base ->
-                String.join("/", base, "configurationTemplate", prefix, suffix));
+                String.join("/", base, "public", "configurationTemplate", prefix, suffix));
     }
 
     /**
      * Fetches the dynamic-form Model bound to a Configuration Template, from whichever node owns
-     * the template.
+     * the template. The Model itself is a node-local resource; the owning node serves it through
+     * its {@code public/configurationTemplate/{prefix}/{suffix}/model} route, keyed by the
+     * template's public PID.
      */
     public Optional<Map<String, Object>> getConfigurationTemplateModel(String prefix, String suffix) {
         return firstNonNullFromNodes(base ->
-                String.join("/", base, "configurationTemplate", prefix, suffix, "model"));
+                String.join("/", base, "public", "configurationTemplate", prefix, suffix, "model"));
     }
 
     /**
      * Fetches all Configuration Templates of an Interoperability Record, from whichever node owns
      * it. Returns the raw {@code Paging} body of the first node whose {@code results} is non-empty.
+     * <p>
+     * Targets each node's {@code public/configurationTemplate/getAllByInteroperabilityRecordId}
+     * route: a cross-node read only ever sees public layers, and the public layer keys the
+     * template-to-record link by the Interoperability Record's public PID (the id form that flows
+     * through the federation), whereas the private layer keys it by the record's node-local id.
      */
     public Optional<Map<String, Object>> getConfigurationTemplatesByInteroperabilityRecordId(String prefix, String suffix) {
         return nodeEndpointService.getResourceCatalogueEndpoints().parallelStream()
-                .map(base -> String.join("/", base, "configurationTemplate",
+                .map(base -> String.join("/", base, "public", "configurationTemplate",
                         "getAllByInteroperabilityRecordId", prefix, suffix))
                 .map(url -> fetchMap(url, "configuration template list fetch"))
                 .filter(body -> body.isPresent() && hasNonEmptyResults(body.get()))
                 .map(Optional::get)
                 .findFirst();
-    }
-
-    /**
-     * Fetches the Configuration Template Instance form/template for a resource + template pair,
-     * from whichever node owns them.
-     */
-    public Optional<Map<String, Object>> getConfigurationTemplateInstanceTemplate(String resPrefix, String resSuffix,
-                                                                                 String ctPrefix, String ctSuffix) {
-        return firstNonNullFromNodes(base -> String.join("/", base, "configurationTemplateInstance",
-                "resources", resPrefix, resSuffix, "templates", ctPrefix, ctSuffix));
     }
 
     private Optional<Map<String, Object>> firstNonNullFromNodes(java.util.function.Function<String, String> urlForBase) {

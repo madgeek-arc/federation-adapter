@@ -7,6 +7,7 @@ import gr.uoa.di.madgik.registry.domain.HighlightedResult;
 import gr.uoa.di.madgik.registry.domain.Paging;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.web.client.RestClient;
 
@@ -14,7 +15,9 @@ import java.util.*;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class AggregatingServiceTest {
@@ -240,5 +243,11 @@ class AggregatingServiceTest {
 
         assertThat(body).isPresent();
         assertThat((List<?>) body.get().get("results")).hasSize(1);
+
+        ArgumentCaptor<String> urlCaptor = ArgumentCaptor.forClass(String.class);
+        verify(getSpec, atLeastOnce()).uri(urlCaptor.capture());
+        assertThat(urlCaptor.getAllValues())
+                .allSatisfy(url -> assertThat(url)
+                        .contains("/public/configurationTemplate/getAllByInteroperabilityRecordId/21.T15/ir1"));
     }
 }
